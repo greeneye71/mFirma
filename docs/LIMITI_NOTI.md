@@ -1,0 +1,37 @@
+# Limiti noti della versione 0.1.0
+
+## Funzioni non ancora implementate
+
+- icona nella system tray;
+- avvio automatico con Windows;
+- istanza singola e inoltro da una seconda invocazione;
+- menu contestuale di Esplora file;
+- anteprima grafica della pagina;
+- trascinamento e ridimensionamento manuale del riquadro;
+- enumerazione e scelta del certificato direttamente nella GUI;
+- destinazione separata con conservazione dell'albero relativo;
+- cronologia, log rotanti ed esportazione del riepilogo;
+- installer e pacchetto per PC senza Python;
+- provider Windows CSP/CNG;
+- TSA e profili PAdES B-T, B-LT e B-LTA.
+
+## Limiti operativi
+
+- viene firmata sempre l'ultima pagina;
+- il nome di output aggiunge sempre `_firmato`;
+- una co-firma aggiunge nuovamente il suffisso;
+- le firme multiple nello stesso preset possono sovrapporsi visivamente;
+- la scansione è manuale, non periodica;
+- i file modificati negli ultimi cinque secondi non compaiono nella scansione;
+- certificato e chiave sono selezionati tramite etichetta testuale;
+- un PDF cifrato non è supportato;
+- la compatibilità dipende dalla DLL e dal middleware del produttore;
+- la richiesta PIN protetta del middleware deve essere provata sul dispositivo;
+- la validazione automatica non determina validità qualificata o legale.
+
+## Stato del supporto
+
+Nessun modello di token è ancora dichiarato ufficialmente supportato. La
+struttura software e la firma PAdES sono state verificate con una chiave software
+di test; PKCS#11 resta da verificare con hardware reale.
+

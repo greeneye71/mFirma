@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mfirma"
+version = "0.1.0"
+description = "Applicazione Windows minimale per firma multipla PAdES tramite PKCS#11"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pyHanko[pkcs11]==0.37.0",
+  "pypdf==6.9.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<10"]
+
+[project.scripts]
+mfirma = "mfirma.__main__:main"
+mfirma-probe = "mfirma.probe:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mfirma"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
