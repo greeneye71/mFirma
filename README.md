@@ -46,7 +46,8 @@ python -m venv .venv
 Nella finestra:
 
 1. scegli la cartella monitorata;
-2. indica la DLL PKCS#11, l'etichetta del token e quella del certificato;
+2. indica la DLL PKCS#11 e premi `Leggi card…` per vedere e scegliere il
+   certificato di firma;
 3. aggiorna l'elenco o aggiungi PDF manualmente;
 4. seleziona più righe e premi `Firma selezionati`;
 5. conferma il riepilogo e inserisci il PIN. Lascia il PIN vuoto soltanto se il
@@ -85,6 +86,8 @@ Implementato:
 - rilevamento assistito delle DLL PKCS#11 x64 installate, senza richiesta PIN.
 - lettura delle etichette pubbliche e scelta del certificato dopo aver indicato
   la DLL, con riconoscimento dell'uso `contentCommitment` per la firma documenti.
+- comando `Leggi card…` con elenco di etichetta, uso, intestatario, emittente e
+  scadenza dei certificati pubblici.
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,

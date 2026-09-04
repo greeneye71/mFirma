@@ -63,7 +63,7 @@ Nella parte superiore della finestra compilare:
 | Cartella da firmare | Radice che contiene una sottocartella per ogni persona |
 | DLL PKCS#11 | Libreria installata dal middleware; usare `Rileva…` o `Sfoglia…` |
 | Token | Etichetta del token; può restare vuota se è presente un solo token |
-| Certificato | Etichetta del certificato di firma; è obbligatoria |
+| Certificato | Etichetta del certificato di firma; usare `Leggi card…` per sceglierla |
 | Chiave | Etichetta della chiave privata, solo se diversa dal certificato |
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
 
@@ -97,6 +97,23 @@ mostra l'uso rilevato: selezionare il certificato di firma e premere
 mFirma conserva anche l'ID pubblico del certificato e lo usa per trovare la
 chiave privata corrispondente. Il campo `Chiave (opz.)` può quindi restare vuoto
 anche quando certificato e chiave hanno etichette diverse.
+
+### Leggere i certificati presenti sulla card
+
+Dopo aver scelto la DLL e collegato la smart card o il token, premere
+`Leggi card…`. Si apre l'elenco dei certificati pubblici esposti dal dispositivo
+con:
+
+- etichetta PKCS#11;
+- uso rilevato, con `Firma documenti` in evidenza quando è dichiarato
+  `contentCommitment`;
+- intestatario ed emittente;
+- data di scadenza.
+
+Selezionare la riga corretta e premere `Usa certificato`, oppure fare doppio
+clic. Il campo `Certificato` viene aggiornato e l'ID pubblico associato viene
+conservato per individuare la chiave privata. La lettura non richiede il PIN e
+non accede alla chiave privata.
 
 ## Caricare i documenti
 

@@ -56,6 +56,10 @@ mostra una finestra se la scelta tra più certificati resta ambigua. Se non
 compare alcuna etichetta, il token può richiedere il login anche per
 l'enumerazione pubblica; consultare il middleware del produttore.
 
+Per vedere nuovamente tutti i certificati premere `Leggi card…`. Controllare
+intestatario, emittente, scadenza e scegliere la riga con uso `Firma documenti`.
+Se la card è stata sostituita, ripetere la lettura prima di firmare.
+
 ## Chiave privata non trovata con l'etichetta del certificato
 
 Certificato e chiave privata possono avere etichette diverse. Riselezionare la

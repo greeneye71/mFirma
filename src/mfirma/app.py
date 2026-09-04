@@ -93,7 +93,7 @@ class MFirmaApp:
 
         labels = ttk.Frame(settings)
         labels.grid(row=2, column=0, columnspan=4, sticky="ew", pady=(8, 0))
-        for column in (1, 3, 5, 7):
+        for column in (1, 3):
             labels.columnconfigure(column, weight=1)
         ttk.Label(labels, text="Token").grid(row=0, column=0)
         ttk.Entry(labels, textvariable=self.token_label, width=16).grid(
@@ -103,18 +103,25 @@ class MFirmaApp:
         ttk.Entry(labels, textvariable=self.certificate_label, width=18).grid(
             row=0, column=3, sticky="ew", padx=(4, 10)
         )
-        ttk.Label(labels, text="Chiave (opz.)").grid(row=0, column=4)
-        ttk.Entry(labels, textvariable=self.key_label, width=16).grid(
-            row=0, column=5, sticky="ew", padx=(4, 10)
+        ttk.Button(
+            labels, text="Leggi card…", command=self._read_card_certificates
+        ).grid(row=0, column=4, padx=(0, 10))
+        ttk.Label(labels, text="Chiave (opz.)").grid(
+            row=1, column=0, sticky="w", pady=(6, 0)
         )
-        ttk.Label(labels, text="Posizione").grid(row=0, column=6)
+        ttk.Entry(labels, textvariable=self.key_label, width=16).grid(
+            row=1, column=1, sticky="ew", padx=(4, 10), pady=(6, 0)
+        )
+        ttk.Label(labels, text="Posizione").grid(
+            row=1, column=2, sticky="w", pady=(6, 0)
+        )
         ttk.Combobox(
             labels,
             textvariable=self.preset,
             values=("top_left", "top_right", "bottom_left", "bottom_right"),
             state="readonly",
             width=14,
-        ).grid(row=0, column=7, sticky="ew", padx=(4, 0))
+        ).grid(row=1, column=3, sticky="ew", padx=(4, 10), pady=(6, 0))
 
         toolbar = ttk.Frame(self.root, padding=(10, 5))
         toolbar.pack(fill="x")
@@ -167,7 +174,21 @@ class MFirmaApp:
             self.module_path.set(selected)
             self._start_selected_module_probe(Path(selected))
 
-    def _start_selected_module_probe(self, path: Path) -> None:
+    def _read_card_certificates(self) -> None:
+        module = self.module_path.get().strip()
+        if not module:
+            messagebox.showinfo(
+                "Leggi card",
+                "Prima seleziona la DLL PKCS#11 con Rileva… oppure Sfoglia….",
+            )
+            return
+        self._start_selected_module_probe(
+            Path(module), show_certificate_list=True
+        )
+
+    def _start_selected_module_probe(
+        self, path: Path, *, show_certificate_list: bool = False
+    ) -> None:
         if self.worker and self.worker.is_alive():
             messagebox.showinfo("mFirma", "Attendere la fine dell'operazione in corso.")
             return
@@ -178,7 +199,9 @@ class MFirmaApp:
                 result = discover_pkcs11_modules(
                     search_roots=(), extra_paths=(path,), probe_timeout=8.0
                 )
-                self.events.put(("module_inspected", (path, result)))
+                self.events.put(
+                    ("module_inspected", (path, result, show_certificate_list))
+                )
             except Exception as exc:
                 self.events.put(("error", f"Lettura della DLL non riuscita:\n{exc}"))
 
@@ -292,7 +315,10 @@ class MFirmaApp:
         self.status.set(f"{len(result.candidates)} DLL PKCS#11 rilevate")
 
     def _finish_module_inspection(
-        self, path: Path, result: DiscoveryResult
+        self,
+        path: Path,
+        result: DiscoveryResult,
+        show_certificate_list: bool = False,
     ) -> None:
         if not result.candidates:
             self.status.set(f"DLL non riconosciuta: {path.name}")
@@ -303,9 +329,17 @@ class MFirmaApp:
                 "la stessa architettura dell'applicazione.",
             )
             return
-        self._apply_module_candidate(result.candidates[0])
+        self._apply_module_candidate(
+            result.candidates[0],
+            force_certificate_dialog=show_certificate_list,
+        )
 
-    def _apply_module_candidate(self, candidate: ModuleCandidate) -> None:
+    def _apply_module_candidate(
+        self,
+        candidate: ModuleCandidate,
+        *,
+        force_certificate_dialog: bool = False,
+    ) -> None:
         self.module_path.set(str(candidate.path))
         self._certificate_ids_by_label = dict(candidate.certificate_ids)
         self._certificate_id_module_path = str(candidate.path)
@@ -321,8 +355,19 @@ class MFirmaApp:
                 self.certificate_label.set(candidate.document_signing_labels[0])
             elif len(candidate.certificate_labels) == 1:
                 self.certificate_label.set(candidate.certificate_labels[0])
-            elif len(candidate.certificate_labels) > 1:
+            elif len(candidate.certificate_labels) > 1 and not force_certificate_dialog:
                 self._show_certificate_candidates(candidate)
+
+        if force_certificate_dialog:
+            if candidate.certificate_labels:
+                self._show_certificate_candidates(candidate)
+            else:
+                messagebox.showinfo(
+                    "Certificati sulla card",
+                    "La card è stata letta, ma non espone certificati pubblici "
+                    "senza autenticazione. Alcuni middleware richiedono il proprio "
+                    "accesso protetto.",
+                )
 
         if candidate.certificate_labels:
             self.status.set(
@@ -336,33 +381,53 @@ class MFirmaApp:
 
     def _show_certificate_candidates(self, candidate: ModuleCandidate) -> None:
         window = tk.Toplevel(self.root)
-        window.title("Scegli l'etichetta del certificato")
-        window.geometry("560x300")
-        window.minsize(440, 240)
+        window.title("Certificati sulla card")
+        window.geometry("1100x380")
+        window.minsize(760, 280)
         window.transient(self.root)
 
         ttk.Label(
             window,
             text=(
-                "La DLL espone più certificati pubblici. Seleziona quello "
-                "destinato alla firma dei documenti."
+                "Certificati pubblici letti dalla card senza richiedere il PIN. "
+                "Seleziona quello destinato alla firma dei documenti."
             ),
-            wraplength=520,
+            wraplength=1040,
             padding=(12, 12, 12, 8),
         ).pack(fill="x")
         frame = ttk.Frame(window, padding=(12, 0))
         frame.pack(fill="both", expand=True)
         table = ttk.Treeview(
             frame,
-            columns=("label", "purpose"),
+            columns=("label", "purpose", "subject", "issuer", "expiry"),
             show="headings",
             selectmode="browse",
         )
         table.heading("label", text="Etichetta certificato")
         table.heading("purpose", text="Uso rilevato")
-        table.column("label", width=330, anchor="w")
-        table.column("purpose", width=160, anchor="w")
-        table.pack(fill="both", expand=True)
+        table.heading("subject", text="Intestatario")
+        table.heading("issuer", text="Emittente")
+        table.heading("expiry", text="Scadenza")
+        table.column("label", width=190, anchor="w")
+        table.column("purpose", width=150, anchor="w")
+        table.column("subject", width=310, anchor="w")
+        table.column("issuer", width=310, anchor="w")
+        table.column("expiry", width=100, anchor="w")
+        vertical = ttk.Scrollbar(frame, orient="vertical", command=table.yview)
+        horizontal = ttk.Scrollbar(frame, orient="horizontal", command=table.xview)
+        table.configure(
+            yscrollcommand=vertical.set,
+            xscrollcommand=horizontal.set,
+        )
+        table.grid(row=0, column=0, sticky="nsew")
+        vertical.grid(row=0, column=1, sticky="ns")
+        horizontal.grid(row=1, column=0, sticky="ew")
+        frame.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+        details_by_label = {
+            certificate.label: certificate
+            for certificate in candidate.certificates
+        }
         ordered_labels = sorted(
             candidate.certificate_labels,
             key=lambda label: (
@@ -370,21 +435,35 @@ class MFirmaApp:
                 label.casefold(),
             ),
         )
+        rows_by_label: dict[str, str] = {}
         for index, label in enumerate(ordered_labels):
-            purpose = (
-                "Firma documenti"
-                if label in candidate.document_signing_labels
-                else "Altro / non determinato"
-            )
+            details = details_by_label.get(label)
+            if label in candidate.document_signing_labels:
+                purpose = "Firma documenti"
+            elif details and details.digital_signature:
+                purpose = "Firma / autenticazione"
+            else:
+                purpose = "Altro / non determinato"
+            row = f"certificate-{index}"
             table.insert(
                 "",
                 "end",
-                iid=f"certificate-{index}",
-                values=(label, purpose),
+                iid=row,
+                values=(
+                    label,
+                    purpose,
+                    details.subject if details else "",
+                    details.issuer if details else "",
+                    details.not_after if details else "",
+                ),
             )
-        first_row = table.get_children()[0]
-        table.selection_set(first_row)
-        table.focus(first_row)
+            rows_by_label[label] = row
+        selected_row = rows_by_label.get(
+            self.certificate_label.get().strip(), table.get_children()[0]
+        )
+        table.selection_set(selected_row)
+        table.focus(selected_row)
+        table.see(selected_row)
 
         def use_selected() -> None:
             selection = table.selection()
@@ -587,8 +666,10 @@ class MFirmaApp:
                 elif kind == "modules_found":
                     self._show_module_candidates(payload)  # type: ignore[arg-type]
                 elif kind == "module_inspected":
-                    path, result = payload  # type: ignore[misc]
-                    self._finish_module_inspection(path, result)
+                    path, result, show_certificate_list = payload  # type: ignore[misc]
+                    self._finish_module_inspection(
+                        path, result, show_certificate_list
+                    )
                 elif kind == "error":
                     self.status.set("Errore")
                     messagebox.showerror("mFirma", str(payload))

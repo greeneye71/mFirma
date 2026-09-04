@@ -21,6 +21,7 @@ La suite copre:
 - firma PAdES software e seconda firma incrementale sullo stesso PDF.
 - riconoscimento statico di DLL PE x64, filtro dei nomi e raccolta delle
   etichette restituite dal probe isolato.
+- estrazione di soggetto, emittente, validità e uso dai certificati pubblici.
 - associazione di certificato e chiave privata tramite lo stesso ID PKCS#11,
   anche quando l'etichetta della chiave è diversa.
 
@@ -62,8 +63,10 @@ script attuale deve rilevare il requisito mancante, non incorporare Python.
 4. Ripetere con token scollegato e collegato, senza inserire il PIN.
 5. Scegliere la stessa DLL con `Sfoglia…` e verificare la compilazione automatica
    oppure la finestra di scelta delle etichette.
-6. Eseguire `mfirma.probe` senza PIN.
-7. Registrare token label, seriale, certificate label e ID disponibili.
+6. Premere `Leggi card…`, verificare elenco, intestatario, emittente, scadenza e
+   selezione del certificato di firma.
+7. Eseguire `mfirma.probe` senza PIN.
+8. Registrare token label, seriale, certificate label e ID disponibili.
 
 ### 2. Firma singola
 

@@ -95,6 +95,10 @@ presenza di più certificati viene preferito automaticamente l'unico con uso
 X.509 `contentCommitment`; se la scelta resta ambigua, mFirma mostra una finestra
 con etichette e uso rilevato. Il PIN non viene richiesto in questa fase.
 
+Con la card collegata è possibile riaprire in qualsiasi momento l'inventario
+premendo `Leggi card…`. La finestra mostra anche intestatario, emittente e
+scadenza e permette di sostituire il certificato selezionato.
+
 Per enumerare dati pubblici senza richiedere il PIN:
 
 ```powershell
@@ -105,7 +109,8 @@ L'output JSON contiene, quando il dispositivo lo permette:
 
 - identificativo dello slot;
 - etichetta, seriale, produttore e modello del token;
-- etichette e ID dei certificati pubblici.
+- etichette, ID, uso, intestatario, emittente e validità dei certificati
+  pubblici.
 
 Alcuni dispositivi richiedono il login anche per leggere i certificati. Il
 probe non tenta l'autenticazione e in questo caso restituisce un messaggio.

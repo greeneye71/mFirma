@@ -8,6 +8,8 @@
   comando.
 - L'ID PKCS#11 salvato per associare certificato e chiave è un identificativo
   pubblico, non contiene la chiave privata e non consente di ricostruirla.
+- `Leggi card…` accede soltanto ai certificati pubblici e ai relativi metadati;
+  non richiede il PIN e non legge né esporta la chiave privata.
 - L'applicazione elimina i propri riferimenti al PIN appena terminato il batch.
 - Python non può garantire l'azzeramento di tutte le copie in memoria.
 - Se il middleware offre un dialogo protetto, l'utente può lasciare vuoto il

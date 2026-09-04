@@ -76,6 +76,10 @@ X.509 Key Usage: un unico certificato `contentCommitment` viene scelto come firm
 documenti, altrimenti le etichette sono presentate in una finestra di scelta.
 Non viene effettuato il login sul token.
 
+Il comando `Leggi card…` richiama lo stesso flusso e forza la visualizzazione
+dell'inventario. Il probe decodifica dal certificato X.509 soltanto dati
+pubblici: soggetto, emittente, intervallo di validità e Key Usage.
+
 Per ogni certificato viene conservato anche il `CKA_ID` pubblico in formato
 esadecimale. Durante la firma pyHanko riceve tale ID sia come `cert_id` sia come
 `key_id`: il token può quindi associare certificato e chiave privata senza

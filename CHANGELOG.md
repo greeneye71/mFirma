@@ -10,6 +10,8 @@
   selezione della DLL.
 - associazione della chiave privata tramite ID PKCS#11 del certificato, senza
   presumere che le due etichette coincidano.
+- aggiunto `Leggi card…`, con elenco dei certificati pubblici e dettagli su uso,
+  intestatario, emittente e scadenza.
 - gli errori del dispositivo durante la firma non sono più classificati come
   PDF non valido.
 

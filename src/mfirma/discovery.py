@@ -37,6 +37,18 @@ _IMAGE_FILE_DLL = 0x2000
 
 
 @dataclass(frozen=True, slots=True)
+class CertificateCandidate:
+    label: str
+    id_hex: str = ""
+    subject: str = ""
+    issuer: str = ""
+    not_before: str = ""
+    not_after: str = ""
+    digital_signature: bool = False
+    content_commitment: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class ModuleCandidate:
     path: Path
     architecture: str
@@ -45,6 +57,7 @@ class ModuleCandidate:
     certificate_labels: tuple[str, ...] = ()
     document_signing_labels: tuple[str, ...] = ()
     certificate_ids: tuple[tuple[str, str], ...] = ()
+    certificates: tuple[CertificateCandidate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,6 +295,7 @@ def discover_pkcs11_modules(
         certificate_labels: set[str] = set()
         document_signing_labels: set[str] = set()
         certificate_ids: dict[str, str] = {}
+        certificate_details: dict[str, CertificateCandidate] = {}
         for token in tokens:
             if not isinstance(token, dict):
                 continue
@@ -301,9 +315,49 @@ def discover_pkcs11_modules(
                         if isinstance(identifier, str) and identifier:
                             certificate_ids.setdefault(clean_label, identifier)
                         key_usage = certificate.get("key_usage")
-                        if (
+                        digital_signature = bool(
+                            isinstance(key_usage, dict)
+                            and key_usage.get("digital_signature") is True
+                        )
+                        content_commitment = bool(
                             isinstance(key_usage, dict)
                             and key_usage.get("content_commitment") is True
+                        )
+                        certificate_details.setdefault(
+                            clean_label,
+                            CertificateCandidate(
+                                label=clean_label,
+                                id_hex=(
+                                    identifier
+                                    if isinstance(identifier, str)
+                                    else ""
+                                ),
+                                subject=(
+                                    certificate.get("subject", "")
+                                    if isinstance(certificate.get("subject"), str)
+                                    else ""
+                                ),
+                                issuer=(
+                                    certificate.get("issuer", "")
+                                    if isinstance(certificate.get("issuer"), str)
+                                    else ""
+                                ),
+                                not_before=(
+                                    certificate.get("not_before", "")
+                                    if isinstance(certificate.get("not_before"), str)
+                                    else ""
+                                ),
+                                not_after=(
+                                    certificate.get("not_after", "")
+                                    if isinstance(certificate.get("not_after"), str)
+                                    else ""
+                                ),
+                                digital_signature=digital_signature,
+                                content_commitment=content_commitment,
+                            ),
+                        )
+                        if (
+                            content_commitment
                         ):
                             document_signing_labels.add(clean_label)
         return ModuleCandidate(
@@ -317,6 +371,12 @@ def discover_pkcs11_modules(
             ),
             certificate_ids=tuple(
                 sorted(certificate_ids.items(), key=lambda item: item[0].casefold())
+            ),
+            certificates=tuple(
+                sorted(
+                    certificate_details.values(),
+                    key=lambda certificate: certificate.label.casefold(),
+                )
             ),
         )
 

@@ -14,18 +14,36 @@ def _public_text(value: object) -> str:
     return str(value).rstrip("\0 ")
 
 
-def _certificate_key_usage(value: object) -> dict[str, bool]:
+def _certificate_details(value: object) -> dict[str, object]:
     try:
         from cryptography import x509
 
         certificate = x509.load_der_x509_certificate(bytes(value))  # type: ignore[arg-type]
-        usage = certificate.extensions.get_extension_for_class(x509.KeyUsage).value
     except Exception:
         return {}
+
+    try:
+        usage = certificate.extensions.get_extension_for_class(x509.KeyUsage).value
+        key_usage = {
+            "digital_signature": usage.digital_signature,
+            "content_commitment": usage.content_commitment,
+        }
+    except x509.ExtensionNotFound:
+        key_usage = {}
+
     return {
-        "digital_signature": usage.digital_signature,
-        "content_commitment": usage.content_commitment,
+        "subject": certificate.subject.rfc4514_string(),
+        "issuer": certificate.issuer.rfc4514_string(),
+        "not_before": certificate.not_valid_before_utc.date().isoformat(),
+        "not_after": certificate.not_valid_after_utc.date().isoformat(),
+        "key_usage": key_usage,
     }
+
+
+def _certificate_key_usage(value: object) -> dict[str, bool]:
+    details = _certificate_details(value)
+    key_usage = details.get("key_usage", {})
+    return key_usage if isinstance(key_usage, dict) else {}
 
 
 def probe_module(module_path: Path) -> list[dict[str, Any]]:
@@ -60,16 +78,14 @@ def probe_module(module_path: Path) -> list[dict[str, Any]]:
                     except Exception:
                         identifier = b""
                     try:
-                        key_usage = _certificate_key_usage(
-                            certificate[Attribute.VALUE]
-                        )
+                        details = _certificate_details(certificate[Attribute.VALUE])
                     except Exception:
-                        key_usage = {}
+                        details = {}
                     item["certificates"].append(
                         {
                             "label": label,
                             "id_hex": bytes(identifier).hex() if identifier else "",
-                            "key_usage": key_usage,
+                            **details,
                         }
                     )
         except Exception as exc:
