@@ -37,9 +37,15 @@ creazione dell'ambiente, dipendenze e installazione di mFirma non è riuscita.
 
 ## DLL PKCS#11 non trovata
 
+- Premere `Rileva…` dopo aver installato il middleware ufficiale.
 - Usare `Sfoglia…` e selezionare la DLL installata dal middleware ufficiale.
 - Non scegliere una DLL generica o copiata da un altro PC.
 - Controllare che applicazione e DLL siano entrambe x64.
+
+Il rilevamento è intenzionalmente prudente e può non riconoscere nomi o
+posizioni non comuni. Se il modulo selezionato manualmente funziona, annotarne
+percorso e produttore in `device-compatibility.md` per estendere le future
+regole di ricerca.
 
 Un errore tipo `%1 non è un'applicazione Win32 valida` spesso indica una
 differenza tra architettura x86 e x64.

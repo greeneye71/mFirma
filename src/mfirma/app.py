@@ -8,6 +8,7 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .batch import BatchOrchestrator
 from .config import AppConfig, ConfigRepository
+from .discovery import DiscoveryResult, ModuleCandidate, discover_pkcs11_modules
 from .models import DocumentCandidate, JobStatus, SignJob
 from .provider import Pkcs11SigningProvider
 from .scanner import candidates_from_paths, scan_root
@@ -63,18 +64,21 @@ class MFirmaApp:
         ttk.Entry(settings, textvariable=self.monitor_root).grid(
             row=0, column=1, sticky="ew", padx=6
         )
-        ttk.Button(settings, text="Sfoglia…", command=self._choose_root).grid(row=0, column=2)
+        ttk.Button(settings, text="Sfoglia…", command=self._choose_root).grid(row=0, column=3)
 
         ttk.Label(settings, text="DLL PKCS#11").grid(row=1, column=0, sticky="w", pady=(5, 0))
         ttk.Entry(settings, textvariable=self.module_path).grid(
             row=1, column=1, sticky="ew", padx=6, pady=(5, 0)
         )
-        ttk.Button(settings, text="Sfoglia…", command=self._choose_module).grid(
+        ttk.Button(settings, text="Rileva…", command=self._start_module_discovery).grid(
             row=1, column=2, pady=(5, 0)
+        )
+        ttk.Button(settings, text="Sfoglia…", command=self._choose_module).grid(
+            row=1, column=3, padx=(5, 0), pady=(5, 0)
         )
 
         labels = ttk.Frame(settings)
-        labels.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+        labels.grid(row=2, column=0, columnspan=4, sticky="ew", pady=(8, 0))
         for column in (1, 3, 5, 7):
             labels.columnconfigure(column, weight=1)
         ttk.Label(labels, text="Token").grid(row=0, column=0)
@@ -144,6 +148,112 @@ class MFirmaApp:
         )
         if selected:
             self.module_path.set(selected)
+
+    def _start_module_discovery(self) -> None:
+        if self.worker and self.worker.is_alive():
+            messagebox.showinfo("mFirma", "Attendere la fine dell'operazione in corso.")
+            return
+        configured = self.module_path.get().strip()
+        extra_paths = (Path(configured),) if configured else ()
+        self.status.set("Ricerca delle DLL PKCS#11 in corso…")
+
+        def work() -> None:
+            try:
+                result = discover_pkcs11_modules(extra_paths=extra_paths)
+                self.events.put(("modules_found", result))
+            except Exception as exc:
+                self.events.put(("error", f"Rilevamento DLL non riuscito:\n{exc}"))
+
+        self.worker = threading.Thread(target=work, daemon=True)
+        self.worker.start()
+
+    def _show_module_candidates(self, result: DiscoveryResult) -> None:
+        if not result.candidates:
+            self.status.set("Nessuna DLL PKCS#11 rilevata")
+            messagebox.showinfo(
+                "Rileva DLL PKCS#11",
+                "Nessuna DLL PKCS#11 x64 valida è stata rilevata.\n\n"
+                f"Percorsi candidati controllati: {result.paths_checked}.\n"
+                "Collega il dispositivo, verifica che il middleware ufficiale "
+                "sia installato oppure usa Sfoglia…",
+            )
+            return
+
+        window = tk.Toplevel(self.root)
+        window.title("DLL PKCS#11 rilevate")
+        window.geometry("980x360")
+        window.minsize(720, 280)
+        window.transient(self.root)
+
+        ttk.Label(
+            window,
+            text="Seleziona il middleware da usare. La scelta non richiede il PIN.",
+            padding=(12, 12, 12, 8),
+        ).pack(fill="x")
+        frame = ttk.Frame(window, padding=(12, 0))
+        frame.pack(fill="both", expand=True)
+        columns = ("path", "tokens", "certificates", "source")
+        table = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse")
+        table.heading("path", text="DLL x64")
+        table.heading("tokens", text="Token rilevati")
+        table.heading("certificates", text="Certificati pubblici")
+        table.heading("source", text="Origine ricerca")
+        table.column("path", width=400, anchor="w")
+        table.column("tokens", width=120, anchor="w")
+        table.column("certificates", width=220, anchor="w")
+        table.column("source", width=180, anchor="w")
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=table.yview)
+        table.configure(yscrollcommand=scrollbar.set)
+        table.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        by_row: dict[str, ModuleCandidate] = {}
+        for index, candidate in enumerate(result.candidates):
+            row = f"module-{index}"
+            token_text = ", ".join(candidate.token_labels) or "nessuno collegato"
+            certificate_text = ", ".join(candidate.certificate_labels) or "—"
+            table.insert(
+                "",
+                "end",
+                iid=row,
+                values=(
+                    str(candidate.path),
+                    token_text,
+                    certificate_text,
+                    candidate.source,
+                ),
+            )
+            by_row[row] = candidate
+        first_row = next(iter(by_row))
+        table.selection_set(first_row)
+        table.focus(first_row)
+
+        def use_selected() -> None:
+            selection = table.selection()
+            if not selection:
+                return
+            candidate = by_row[selection[0]]
+            self.module_path.set(str(candidate.path))
+            if len(candidate.token_labels) == 1 and not self.token_label.get().strip():
+                self.token_label.set(candidate.token_labels[0])
+            if (
+                len(candidate.certificate_labels) == 1
+                and not self.certificate_label.get().strip()
+            ):
+                self.certificate_label.set(candidate.certificate_labels[0])
+            self.status.set(f"DLL selezionata: {candidate.path.name}")
+            window.destroy()
+
+        buttons = ttk.Frame(window, padding=12)
+        buttons.pack(fill="x")
+        ttk.Button(buttons, text="Annulla", command=window.destroy).pack(side="right")
+        ttk.Button(buttons, text="Usa selezionata", command=use_selected).pack(
+            side="right", padx=(0, 8)
+        )
+        table.bind("<Double-1>", lambda _event: use_selected())
+        window.protocol("WM_DELETE_WINDOW", window.destroy)
+        window.grab_set()
+        self.status.set(f"{len(result.candidates)} DLL PKCS#11 rilevate")
 
     def _sync_config(self) -> None:
         self.config.monitor.root = self.monitor_root.get().strip()
@@ -318,6 +428,8 @@ class MFirmaApp:
                         )
                 elif kind == "batch_done":
                     self._finish_batch(payload)  # type: ignore[arg-type]
+                elif kind == "modules_found":
+                    self._show_module_candidates(payload)  # type: ignore[arg-type]
                 elif kind == "error":
                     self.status.set("Errore")
                     messagebox.showerror("mFirma", str(payload))

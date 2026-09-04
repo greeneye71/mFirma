@@ -76,6 +76,19 @@ quando Python o uno dei moduli richiesti non sono disponibili.
 Il percorso della DLL dipende dal produttore. Non copiare DLL da altri PC e non
 rinominarle: installare il middleware ufficiale e usare la libreria fornita.
 
+Nella GUI premere `Rileva…` accanto al percorso della DLL. La ricerca:
+
+1. legge le posizioni dei software installati registrate da Windows;
+2. controlla `Program Files`, `LocalAppData` e `System32` con nomi compatibili;
+3. scarta file non DLL e architetture diverse da x64;
+4. interroga ogni candidata in un processo separato con timeout;
+5. mostra soltanto i moduli che rispondono come PKCS#11.
+
+La ricerca non chiede il PIN. Un modulo può essere riconosciuto anche senza un
+token collegato; in tal caso non saranno disponibili etichette da compilare.
+Non esiste una posizione Windows obbligatoria per i moduli PKCS#11, quindi
+`Sfoglia…` rimane disponibile per middleware non rilevati.
+
 Per enumerare dati pubblici senza richiedere il PIN:
 
 ```powershell

@@ -6,6 +6,14 @@ from pathlib import Path
 from typing import Any
 
 
+def _public_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace").rstrip("\0 ")
+    return str(value).rstrip("\0 ")
+
+
 def probe_module(module_path: Path) -> list[dict[str, Any]]:
     """Enumera dati pubblici senza login e senza richiedere un PIN."""
     import pkcs11
@@ -18,10 +26,10 @@ def probe_module(module_path: Path) -> list[dict[str, Any]]:
         token = slot.get_token()
         item: dict[str, Any] = {
             "slot_id": slot.slot_id,
-            "token_label": token.label,
-            "token_serial": token.serial,
-            "manufacturer": token.manufacturer_id,
-            "model": token.model,
+            "token_label": _public_text(token.label),
+            "token_serial": _public_text(token.serial),
+            "manufacturer": _public_text(token.manufacturer_id),
+            "model": _public_text(token.model),
             "certificates": [],
         }
         try:
@@ -30,7 +38,7 @@ def probe_module(module_path: Path) -> list[dict[str, Any]]:
                     {Attribute.CLASS: ObjectClass.CERTIFICATE}
                 ):
                     try:
-                        label = certificate[Attribute.LABEL]
+                        label = _public_text(certificate[Attribute.LABEL])
                     except Exception:
                         label = ""
                     try:

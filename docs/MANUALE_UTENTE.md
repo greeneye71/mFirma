@@ -60,7 +60,7 @@ Nella parte superiore della finestra compilare:
 | Campo | Significato |
 |---|---|
 | Cartella da firmare | Radice che contiene una sottocartella per ogni persona |
-| DLL PKCS#11 | Libreria installata dal middleware del dispositivo |
+| DLL PKCS#11 | Libreria installata dal middleware; usare `Rileva…` o `Sfoglia…` |
 | Token | Etichetta del token; può restare vuota se è presente un solo token |
 | Certificato | Etichetta del certificato di firma; è obbligatoria |
 | Chiave | Etichetta della chiave privata, solo se diversa dal certificato |
@@ -68,6 +68,22 @@ Nella parte superiore della finestra compilare:
 
 La configurazione viene salvata quando si avvia una firma. Il PIN non fa parte
 della configurazione.
+
+### Rilevare automaticamente la DLL
+
+Premere `Rileva…` accanto a `DLL PKCS#11`. mFirma cerca candidate nelle cartelle
+dei programmi installati e nelle posizioni standard di Windows, accetta
+soltanto DLL x64 e verifica l'interfaccia PKCS#11 in un processo separato. Il
+controllo non richiede il PIN e può durare alcuni secondi.
+
+La finestra mostra percorso, eventuali token collegati e origine della
+candidata. Selezionare una riga e premere `Usa selezionata`, oppure fare doppio
+clic. Quando viene rilevata una sola etichetta di token o certificato e il campo
+corrispondente è vuoto, viene compilato automaticamente.
+
+Un middleware valido può comparire anche come `nessuno collegato` quando il
+token non è inserito. Se la ricerca non trova nulla, usare `Sfoglia…` e indicare
+la DLL documentata dal produttore.
 
 ## Caricare i documenti
 

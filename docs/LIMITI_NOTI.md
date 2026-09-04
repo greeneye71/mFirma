@@ -8,7 +8,8 @@
 - menu contestuale di Esplora file;
 - anteprima grafica della pagina;
 - trascinamento e ridimensionamento manuale del riquadro;
-- enumerazione e scelta del certificato direttamente nella GUI;
+- scelta guidata completa tra più certificati; il rilevatore compila il campo
+  soltanto quando trova una singola etichetta pubblica;
 - destinazione separata con conservazione dell'albero relativo;
 - cronologia, log rotanti ed esportazione del riepilogo;
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza
@@ -27,6 +28,8 @@
 - certificato e chiave sono selezionati tramite etichetta testuale;
 - un PDF cifrato non è supportato;
 - la compatibilità dipende dalla DLL e dal middleware del produttore;
+- il rilevamento usa posizioni e nomi plausibili e non può garantire di trovare
+  tutti i middleware PKCS#11 esistenti;
 - la richiesta PIN protetta del middleware deve essere provata sul dispositivo;
 - la validazione automatica non determina validità qualificata o legale.
 

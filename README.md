@@ -82,11 +82,12 @@ Implementato:
   crittograficamente valida;
 - configurazione JSON senza PIN;
 - probe PKCS#11 senza autenticazione e test del nucleo senza token.
+- rilevamento assistito delle DLL PKCS#11 x64 installate, senza richiesta PIN.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
-selezione guidata del certificato, destinazione separata, pacchetto autonomo
-con installer Windows e provider CSP/CNG. Questi punti sono pianificati in
-[docs/PIANO.md](docs/PIANO.md).
+scelta guidata completa del certificato, destinazione separata, pacchetto
+autonomo con installer Windows e provider CSP/CNG. Questi punti sono pianificati
+in [docs/PIANO.md](docs/PIANO.md).
 
 ## Test
 

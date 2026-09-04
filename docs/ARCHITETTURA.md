@@ -42,6 +42,7 @@ GUI Tkinter ───────> BatchOrchestrator
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
 | `probe.py` | Enumerazione pubblica di token e certificati senza PIN |
+| `discovery.py` | Ricerca, filtro PE x64 e probe isolato dei moduli PKCS#11 |
 
 ## Avvio e ambiente locale
 
@@ -54,6 +55,19 @@ installa il progetto in modalità modificabile.
 Questo bootstrap resta esterno al codice applicativo e non è un installer
 Windows autonomo: Python deve essere già installato sul PC. Configurazione e PDF
 sono esterni a `.venv`, quindi la ricostruzione dell'ambiente non li modifica.
+
+## Rilevamento del middleware
+
+La GUI avvia `discovery.py` in un worker. Il modulo raccoglie percorsi candidati
+dal registro dei software installati e da un insieme limitato di cartelle
+standard, filtrando i nomi tipici di moduli PKCS#11. Prima del caricamento legge
+l'intestazione PE e accetta soltanto DLL x64.
+
+Ogni candidata viene passata a `mfirma.probe` in un processo separato, senza
+PIN e con timeout. Questo confina blocchi o crash del middleware fuori dal
+processo Tkinter. Il risultato ritorna alla GUI tramite la stessa coda eventi
+usata dagli altri worker; il percorso viene salvato soltanto dopo la scelta
+dell'utente.
 
 ## Modello del batch
 
@@ -93,4 +107,6 @@ controllo crittografico. Non esegue una valutazione normativa, EUTL, OCSP o CRL.
 - Lo scanner non firma e non scrive output.
 - Il provider non decide nomi o posizioni.
 - Il servizio PDF non salva né acquisisce il PIN.
+- Il rilevatore non carica DLL nel processo della GUI e non seleziona moduli
+  senza conferma dell'utente.
 - Il fake provider esiste solo nei test.

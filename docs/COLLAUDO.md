@@ -19,6 +19,8 @@ La suite copre:
 - prosecuzione del batch dopo un errore relativo a un file;
 - apertura di una sola sessione nel batch simulato;
 - firma PAdES software e seconda firma incrementale sullo stesso PDF.
+- riconoscimento statico di DLL PE x64, filtro dei nomi e raccolta delle
+  etichette restituite dal probe isolato.
 
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.
@@ -54,8 +56,10 @@ script attuale deve rilevare il requisito mancante, non incorporare Python.
 
 1. Annotare i dati in `device-compatibility.md`.
 2. Verificare che Python sia a 64 bit.
-3. Eseguire `mfirma.probe` senza PIN.
-4. Registrare token label, seriale, certificate label e ID disponibili.
+3. Premere `Rileva…` e verificare che il middleware atteso compaia.
+4. Ripetere con token scollegato e collegato, senza inserire il PIN.
+5. Eseguire `mfirma.probe` senza PIN.
+6. Registrare token label, seriale, certificate label e ID disponibili.
 
 ### 2. Firma singola
 

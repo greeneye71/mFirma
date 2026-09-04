@@ -70,3 +70,14 @@ e riproducibili.
 | Firma solo grafica | verifica dell'oggetto firma incorporato |
 | Errore su un file blocca tutti | esito indipendente per ogni job |
 | DLL non autorizzata | percorso esplicito; provenienza da verificare operativamente |
+
+## Rilevamento delle DLL
+
+Il rilevatore esamina soltanto nomi compatibili nelle posizioni dei software
+installati e nelle cartelle Windows previste. Prima del probe scarta i file che
+non sono DLL PE x64. Il probe viene eseguito senza PIN in un processo separato
+con timeout, così un crash del middleware non termina la GUI.
+
+L'isolamento del processo non rende affidabile una DLL sconosciuta: prima di
+selezionarla l'utente deve controllare percorso e produttore e deve usare
+soltanto middleware ottenuto dal fornitore ufficiale del dispositivo.
