@@ -8,8 +8,6 @@
 - menu contestuale di Esplora file;
 - anteprima grafica della pagina;
 - trascinamento e ridimensionamento manuale del riquadro;
-- scelta guidata completa tra più certificati; il rilevatore compila il campo
-  soltanto quando trova una singola etichetta pubblica;
 - destinazione separata con conservazione dell'albero relativo;
 - cronologia, log rotanti ed esportazione del riepilogo;
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza

@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 from mfirma import discovery
-from mfirma.probe import _public_text
+from mfirma.probe import _certificate_key_usage, _public_text
 
 
 def _write_pe_dll(path: Path, machine: int) -> None:
@@ -69,7 +69,13 @@ def test_discovery_collects_unique_token_and_certificate_labels(
     payload = [
         {
             "token_label": "Token B",
-            "certificates": [{"label": "Firma"}, {"label": "Firma"}],
+            "certificates": [
+                {
+                    "label": "Firma",
+                    "key_usage": {"content_commitment": True},
+                },
+                {"label": "Firma"},
+            ],
         },
         {"token_label": "Token A", "certificates": []},
     ]
@@ -82,6 +88,7 @@ def test_discovery_collects_unique_token_and_certificate_labels(
     candidate = result.candidates[0]
     assert candidate.token_labels == ("Token A", "Token B")
     assert candidate.certificate_labels == ("Firma",)
+    assert candidate.document_signing_labels == ("Firma",)
 
 
 def test_probe_uses_console_python_when_app_runs_with_pythonw(
@@ -108,3 +115,4 @@ def test_probe_normalises_byte_fields_for_json_output():
     assert _public_text(b"Firma digitale   \0") == "Firma digitale"
     assert _public_text("Token   ") == "Token"
     assert _public_text(None) == ""
+    assert _certificate_key_usage(b"not a certificate") == {}

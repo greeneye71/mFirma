@@ -6,6 +6,8 @@
 - `avvia_mFirma.cmd` prepara l'ambiente al primo avvio se necessario;
 - aggiunte istruzioni per installare Python 3.13 tramite `winget`.
 - aggiunto il rilevamento assistito delle DLL PKCS#11 x64 con probe isolato.
+- lettura automatica e scelta guidata dell'etichetta del certificato dopo la
+  selezione della DLL.
 
 ## 0.1.0 - 2026-09-04
 

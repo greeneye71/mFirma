@@ -24,7 +24,8 @@ tray, anteprima PDF avanzata o tabelle molto grandi.
 - firma PAdES B-B e verifica immediata;
 - GUI per configurare, selezionare e firmare più file;
 - bootstrap Windows per creare e riparare automaticamente `.venv`;
-- rilevamento assistito dei moduli PKCS#11 x64 con probe fuori processo;
+- rilevamento assistito dei moduli PKCS#11 x64, lettura Key Usage e scelta del
+  certificato con probe fuori processo;
 - test automatici con provider fittizio confinato ai test.
 
 ### 2. Collaudo hardware (quando saranno disponibili token e PDF)
@@ -43,7 +44,7 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 
 - icona tray e avvio per utente;
 - anteprima della pagina con rettangolo spostabile;
-- scelta guidata completa tra token e certificati nella GUI;
+- selezione del token quando più dispositivi sono collegati;
 - istanza singola, launcher e selezione multipla da Esplora file;
 - log rotanti e cronologia locale.
 

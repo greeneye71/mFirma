@@ -19,7 +19,8 @@ Verificare che:
 3. il middleware ufficiale del token sia installato;
 4. token o smart card siano collegati;
 5. la DLL PKCS#11 sia a 64 bit, come Python e l'applicazione;
-6. siano noti il percorso della DLL e l'etichetta del certificato;
+6. sia installata la DLL PKCS#11; percorso ed etichette possono essere rilevati
+   da mFirma;
 7. l'utente abbia permesso di lettura e scrittura nelle cartelle dei PDF.
 
 ## Avvio
@@ -83,7 +84,15 @@ corrispondente è vuoto, viene compilato automaticamente.
 
 Un middleware valido può comparire anche come `nessuno collegato` quando il
 token non è inserito. Se la ricerca non trova nulla, usare `Sfoglia…` e indicare
-la DLL documentata dal produttore.
+la DLL documentata dal produttore. Dopo la scelta manuale mFirma legge
+automaticamente token e certificati pubblici dalla DLL selezionata.
+
+Se viene trovata una sola etichetta di certificato, il campo `Certificato`
+viene compilato automaticamente. Anche in presenza di più certificati, mFirma
+sceglie automaticamente l'unico che dichiara l'uso `contentCommitment`, tipico
+della firma di documenti. Negli altri casi si apre una finestra di scelta che
+mostra l'uso rilevato: selezionare il certificato di firma e premere
+`Usa certificato`. Questa lettura non richiede il PIN.
 
 ## Caricare i documenti
 

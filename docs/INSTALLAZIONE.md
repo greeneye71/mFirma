@@ -89,6 +89,12 @@ token collegato; in tal caso non saranno disponibili etichette da compilare.
 Non esiste una posizione Windows obbligatoria per i moduli PKCS#11, quindi
 `Sfoglia…` rimane disponibile per middleware non rilevati.
 
+Anche una DLL scelta con `Sfoglia…` viene interrogata automaticamente. Se il
+token espone un solo certificato pubblico, l'etichetta viene compilata. In
+presenza di più certificati viene preferito automaticamente l'unico con uso
+X.509 `contentCommitment`; se la scelta resta ambigua, mFirma mostra una finestra
+con etichette e uso rilevato. Il PIN non viene richiesto in questa fase.
+
 Per enumerare dati pubblici senza richiedere il PIN:
 
 ```powershell

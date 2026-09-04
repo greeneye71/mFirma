@@ -83,11 +83,12 @@ Implementato:
 - configurazione JSON senza PIN;
 - probe PKCS#11 senza autenticazione e test del nucleo senza token.
 - rilevamento assistito delle DLL PKCS#11 x64 installate, senza richiesta PIN.
+- lettura delle etichette pubbliche e scelta del certificato dopo aver indicato
+  la DLL, con riconoscimento dell'uso `contentCommitment` per la firma documenti.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
-scelta guidata completa del certificato, destinazione separata, pacchetto
-autonomo con installer Windows e provider CSP/CNG. Questi punti sono pianificati
-in [docs/PIANO.md](docs/PIANO.md).
+destinazione separata, pacchetto autonomo con installer Windows e provider
+CSP/CNG. Questi punti sono pianificati in [docs/PIANO.md](docs/PIANO.md).
 
 ## Test
 

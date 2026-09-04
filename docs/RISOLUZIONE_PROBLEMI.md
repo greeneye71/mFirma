@@ -47,6 +47,15 @@ posizioni non comuni. Se il modulo selezionato manualmente funziona, annotarne
 percorso e produttore in `device-compatibility.md` per estendere le future
 regole di ricerca.
 
+## Etichetta del certificato non nota
+
+Collegare il token e scegliere la DLL con `Rileva…` oppure `Sfoglia…`. mFirma
+legge le etichette pubbliche senza PIN: compila automaticamente una singola
+etichetta, preferisce l'unico certificato con uso `contentCommitment` oppure
+mostra una finestra se la scelta tra più certificati resta ambigua. Se non
+compare alcuna etichetta, il token può richiedere il login anche per
+l'enumerazione pubblica; consultare il middleware del produttore.
+
 Un errore tipo `%1 non è un'applicazione Win32 valida` spesso indica una
 differenza tra architettura x86 e x64.
 

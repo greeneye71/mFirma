@@ -69,6 +69,13 @@ processo Tkinter. Il risultato ritorna alla GUI tramite la stessa coda eventi
 usata dagli altri worker; il percorso viene salvato soltanto dopo la scelta
 dell'utente.
 
+Lo stesso probe isolato viene eseguito su una DLL scelta manualmente. Le
+etichette pubbliche vengono restituite alla GUI: una singola etichetta viene
+compilata automaticamente. Per più certificati viene analizzata l'estensione
+X.509 Key Usage: un unico certificato `contentCommitment` viene scelto come firma
+documenti, altrimenti le etichette sono presentate in una finestra di scelta.
+Non viene effettuato il login sul token.
+
 ## Modello del batch
 
 Ogni elemento conserva:

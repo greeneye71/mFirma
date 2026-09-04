@@ -58,8 +58,10 @@ script attuale deve rilevare il requisito mancante, non incorporare Python.
 2. Verificare che Python sia a 64 bit.
 3. Premere `Rileva…` e verificare che il middleware atteso compaia.
 4. Ripetere con token scollegato e collegato, senza inserire il PIN.
-5. Eseguire `mfirma.probe` senza PIN.
-6. Registrare token label, seriale, certificate label e ID disponibili.
+5. Scegliere la stessa DLL con `Sfoglia…` e verificare la compilazione automatica
+   oppure la finestra di scelta delle etichette.
+6. Eseguire `mfirma.probe` senza PIN.
+7. Registrare token label, seriale, certificate label e ID disponibili.
 
 ### 2. Firma singola
 

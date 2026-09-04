@@ -14,6 +14,20 @@ def _public_text(value: object) -> str:
     return str(value).rstrip("\0 ")
 
 
+def _certificate_key_usage(value: object) -> dict[str, bool]:
+    try:
+        from cryptography import x509
+
+        certificate = x509.load_der_x509_certificate(bytes(value))  # type: ignore[arg-type]
+        usage = certificate.extensions.get_extension_for_class(x509.KeyUsage).value
+    except Exception:
+        return {}
+    return {
+        "digital_signature": usage.digital_signature,
+        "content_commitment": usage.content_commitment,
+    }
+
+
 def probe_module(module_path: Path) -> list[dict[str, Any]]:
     """Enumera dati pubblici senza login e senza richiedere un PIN."""
     import pkcs11
@@ -45,10 +59,17 @@ def probe_module(module_path: Path) -> list[dict[str, Any]]:
                         identifier = certificate[Attribute.ID]
                     except Exception:
                         identifier = b""
+                    try:
+                        key_usage = _certificate_key_usage(
+                            certificate[Attribute.VALUE]
+                        )
+                    except Exception:
+                        key_usage = {}
                     item["certificates"].append(
                         {
                             "label": label,
                             "id_hex": bytes(identifier).hex() if identifier else "",
+                            "key_usage": key_usage,
                         }
                     )
         except Exception as exc:

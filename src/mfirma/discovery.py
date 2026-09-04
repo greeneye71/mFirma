@@ -43,6 +43,7 @@ class ModuleCandidate:
     source: str
     token_labels: tuple[str, ...] = ()
     certificate_labels: tuple[str, ...] = ()
+    document_signing_labels: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,6 +279,7 @@ def discover_pkcs11_modules(
         # while its smart card or USB token is currently disconnected.
         token_labels: set[str] = set()
         certificate_labels: set[str] = set()
+        document_signing_labels: set[str] = set()
         for token in tokens:
             if not isinstance(token, dict):
                 continue
@@ -291,13 +293,23 @@ def discover_pkcs11_modules(
                         continue
                     certificate_label = certificate.get("label")
                     if isinstance(certificate_label, str) and certificate_label.strip():
-                        certificate_labels.add(certificate_label.strip())
+                        clean_label = certificate_label.strip()
+                        certificate_labels.add(clean_label)
+                        key_usage = certificate.get("key_usage")
+                        if (
+                            isinstance(key_usage, dict)
+                            and key_usage.get("content_commitment") is True
+                        ):
+                            document_signing_labels.add(clean_label)
         return ModuleCandidate(
             path=path,
             architecture=architecture,
             source=source,
             token_labels=tuple(sorted(token_labels, key=str.casefold)),
             certificate_labels=tuple(sorted(certificate_labels, key=str.casefold)),
+            document_signing_labels=tuple(
+                sorted(document_signing_labels, key=str.casefold)
+            ),
         )
 
     if eligible:

@@ -143,11 +143,33 @@ class MFirmaApp:
             self.monitor_root.set(selected)
 
     def _choose_module(self) -> None:
+        if self.worker and self.worker.is_alive():
+            messagebox.showinfo("mFirma", "Attendere la fine dell'operazione in corso.")
+            return
         selected = filedialog.askopenfilename(
             title="DLL PKCS#11", filetypes=(("Librerie Windows", "*.dll"), ("Tutti", "*.*"))
         )
         if selected:
             self.module_path.set(selected)
+            self._start_selected_module_probe(Path(selected))
+
+    def _start_selected_module_probe(self, path: Path) -> None:
+        if self.worker and self.worker.is_alive():
+            messagebox.showinfo("mFirma", "Attendere la fine dell'operazione in corso.")
+            return
+        self.status.set(f"Lettura dei certificati da {path.name}…")
+
+        def work() -> None:
+            try:
+                result = discover_pkcs11_modules(
+                    search_roots=(), extra_paths=(path,), probe_timeout=8.0
+                )
+                self.events.put(("module_inspected", (path, result)))
+            except Exception as exc:
+                self.events.put(("error", f"Lettura della DLL non riuscita:\n{exc}"))
+
+        self.worker = threading.Thread(target=work, daemon=True)
+        self.worker.start()
 
     def _start_module_discovery(self) -> None:
         if self.worker and self.worker.is_alive():
@@ -211,7 +233,15 @@ class MFirmaApp:
         for index, candidate in enumerate(result.candidates):
             row = f"module-{index}"
             token_text = ", ".join(candidate.token_labels) or "nessuno collegato"
-            certificate_text = ", ".join(candidate.certificate_labels) or "—"
+            certificate_text = (
+                ", ".join(
+                    f"{label} (firma documenti)"
+                    if label in candidate.document_signing_labels
+                    else label
+                    for label in candidate.certificate_labels
+                )
+                or "—"
+            )
             table.insert(
                 "",
                 "end",
@@ -233,16 +263,8 @@ class MFirmaApp:
             if not selection:
                 return
             candidate = by_row[selection[0]]
-            self.module_path.set(str(candidate.path))
-            if len(candidate.token_labels) == 1 and not self.token_label.get().strip():
-                self.token_label.set(candidate.token_labels[0])
-            if (
-                len(candidate.certificate_labels) == 1
-                and not self.certificate_label.get().strip()
-            ):
-                self.certificate_label.set(candidate.certificate_labels[0])
-            self.status.set(f"DLL selezionata: {candidate.path.name}")
             window.destroy()
+            self._apply_module_candidate(candidate)
 
         buttons = ttk.Frame(window, padding=12)
         buttons.pack(fill="x")
@@ -254,6 +276,118 @@ class MFirmaApp:
         window.protocol("WM_DELETE_WINDOW", window.destroy)
         window.grab_set()
         self.status.set(f"{len(result.candidates)} DLL PKCS#11 rilevate")
+
+    def _finish_module_inspection(
+        self, path: Path, result: DiscoveryResult
+    ) -> None:
+        if not result.candidates:
+            self.status.set(f"DLL non riconosciuta: {path.name}")
+            messagebox.showwarning(
+                "Leggi certificati",
+                "Non è stato possibile leggere questa DLL come modulo PKCS#11 x64.\n\n"
+                "Controlla che sia la libreria indicata dal produttore e che abbia "
+                "la stessa architettura dell'applicazione.",
+            )
+            return
+        self._apply_module_candidate(result.candidates[0])
+
+    def _apply_module_candidate(self, candidate: ModuleCandidate) -> None:
+        self.module_path.set(str(candidate.path))
+        current_token = self.token_label.get().strip()
+        if len(candidate.token_labels) == 1 and (
+            not current_token or current_token not in candidate.token_labels
+        ):
+            self.token_label.set(candidate.token_labels[0])
+
+        current_certificate = self.certificate_label.get().strip()
+        if current_certificate not in candidate.certificate_labels:
+            if len(candidate.document_signing_labels) == 1:
+                self.certificate_label.set(candidate.document_signing_labels[0])
+            elif len(candidate.certificate_labels) == 1:
+                self.certificate_label.set(candidate.certificate_labels[0])
+            elif len(candidate.certificate_labels) > 1:
+                self._show_certificate_candidates(candidate)
+
+        if candidate.certificate_labels:
+            self.status.set(
+                f"{len(candidate.certificate_labels)} certificati letti da "
+                f"{candidate.path.name}"
+            )
+        else:
+            self.status.set(
+                f"DLL selezionata: {candidate.path.name}; nessun certificato pubblico"
+            )
+
+    def _show_certificate_candidates(self, candidate: ModuleCandidate) -> None:
+        window = tk.Toplevel(self.root)
+        window.title("Scegli l'etichetta del certificato")
+        window.geometry("560x300")
+        window.minsize(440, 240)
+        window.transient(self.root)
+
+        ttk.Label(
+            window,
+            text=(
+                "La DLL espone più certificati pubblici. Seleziona quello "
+                "destinato alla firma dei documenti."
+            ),
+            wraplength=520,
+            padding=(12, 12, 12, 8),
+        ).pack(fill="x")
+        frame = ttk.Frame(window, padding=(12, 0))
+        frame.pack(fill="both", expand=True)
+        table = ttk.Treeview(
+            frame,
+            columns=("label", "purpose"),
+            show="headings",
+            selectmode="browse",
+        )
+        table.heading("label", text="Etichetta certificato")
+        table.heading("purpose", text="Uso rilevato")
+        table.column("label", width=330, anchor="w")
+        table.column("purpose", width=160, anchor="w")
+        table.pack(fill="both", expand=True)
+        ordered_labels = sorted(
+            candidate.certificate_labels,
+            key=lambda label: (
+                label not in candidate.document_signing_labels,
+                label.casefold(),
+            ),
+        )
+        for index, label in enumerate(ordered_labels):
+            purpose = (
+                "Firma documenti"
+                if label in candidate.document_signing_labels
+                else "Altro / non determinato"
+            )
+            table.insert(
+                "",
+                "end",
+                iid=f"certificate-{index}",
+                values=(label, purpose),
+            )
+        first_row = table.get_children()[0]
+        table.selection_set(first_row)
+        table.focus(first_row)
+
+        def use_selected() -> None:
+            selection = table.selection()
+            if not selection:
+                return
+            label = str(table.item(selection[0], "values")[0])
+            self.certificate_label.set(label)
+            self.status.set(f"Certificato selezionato: {label}")
+            window.destroy()
+
+        buttons = ttk.Frame(window, padding=12)
+        buttons.pack(fill="x")
+        ttk.Button(buttons, text="Annulla", command=window.destroy).pack(side="right")
+        ttk.Button(buttons, text="Usa certificato", command=use_selected).pack(
+            side="right", padx=(0, 8)
+        )
+        table.bind("<Double-1>", lambda _event: use_selected())
+        window.protocol("WM_DELETE_WINDOW", window.destroy)
+        window.grab_set()
 
     def _sync_config(self) -> None:
         self.config.monitor.root = self.monitor_root.get().strip()
@@ -430,6 +564,9 @@ class MFirmaApp:
                     self._finish_batch(payload)  # type: ignore[arg-type]
                 elif kind == "modules_found":
                     self._show_module_candidates(payload)  # type: ignore[arg-type]
+                elif kind == "module_inspected":
+                    path, result = payload  # type: ignore[misc]
+                    self._finish_module_inspection(path, result)
                 elif kind == "error":
                     self.status.set("Errore")
                     messagebox.showerror("mFirma", str(payload))
