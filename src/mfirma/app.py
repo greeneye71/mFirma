@@ -63,6 +63,13 @@ class MFirmaApp:
         )
         self.key_label = tk.StringVar(value=self.config.pkcs11.key_label)
         self.preset = tk.StringVar(value=self.config.signature.preset)
+        self.appearance_variant = tk.StringVar(
+            value=(
+                "Compatto"
+                if self.config.signature.appearance_variant == "compact"
+                else "Completo"
+            )
+        )
         self.status = tk.StringVar(value="Pronto")
 
     def _build_ui(self) -> None:
@@ -122,6 +129,16 @@ class MFirmaApp:
             state="readonly",
             width=14,
         ).grid(row=1, column=3, sticky="ew", padx=(4, 10), pady=(6, 0))
+        ttk.Label(labels, text="Aspetto").grid(
+            row=1, column=4, sticky="w", pady=(6, 0)
+        )
+        ttk.Combobox(
+            labels,
+            textvariable=self.appearance_variant,
+            values=("Completo", "Compatto"),
+            state="readonly",
+            width=12,
+        ).grid(row=1, column=5, sticky="ew", padx=(4, 0), pady=(6, 0))
 
         toolbar = ttk.Frame(self.root, padding=(10, 5))
         toolbar.pack(fill="x")
@@ -497,6 +514,16 @@ class MFirmaApp:
             self.config.pkcs11.certificate_id = ""
         self.config.pkcs11.key_label = self.key_label.get().strip()
         self.config.signature.preset = self.preset.get()
+        variant = (
+            "compact" if self.appearance_variant.get() == "Compatto" else "complete"
+        )
+        self.config.signature.appearance_variant = variant
+        if variant == "compact":
+            self.config.signature.width_points = 190.0
+            self.config.signature.height_points = 68.0
+        else:
+            self.config.signature.width_points = 240.0
+            self.config.signature.height_points = 92.0
         self.repository.save(self.config)
 
     def _start_scan(self) -> None:

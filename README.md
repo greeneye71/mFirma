@@ -12,6 +12,11 @@ PIN per ogni firma. PAdES usa aggiornamenti incrementali, quindi una firma già
 presente viene preservata ed è possibile aggiungerne un'altra selezionando
 manualmente il PDF firmato.
 
+L'aspetto visibile predefinito è vettoriale e usa un font incorporato. Mostra
+firmatario, data e ora con fuso, emittente, profilo PAdES B-B, SHA-256 e numero
+progressivo della firma, senza formulare giudizi di validità o indicare una
+marca temporale non presente.
+
 ## Installazione e avvio
 
 Richiede Windows 11 x64, Python 3.11+ x64 e il middleware ufficiale del token.
@@ -89,6 +94,8 @@ Implementato:
 - comando `Leggi card…` con elenco di etichetta, uso, intestatario, emittente e
   scadenza dei certificati pubblici.
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
+- aspetto firma vettoriale completo (240 × 92 pt) o compatto (190 × 68 pt),
+  riutilizzabile dalla futura anteprima Qt e con cleanup deterministico.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
 destinazione separata, pacchetto autonomo con installer Windows e provider
@@ -109,6 +116,8 @@ La scheda da compilare con dispositivo e file reali è in
 - [Manuale utente](docs/MANUALE_UTENTE.md)
 - [Installazione](docs/INSTALLAZIONE.md)
 - [Architettura](docs/ARCHITETTURA.md)
+- [Specifica dell'interfaccia](docs/SPECIFICA_INTERFACCIA.md)
+- [Aspetto visibile della firma](docs/SPECIFICA_ASPETTO_FIRMA.md)
 - [Piano di collaudo](docs/COLLAUDO.md)
 - [Risoluzione dei problemi](docs/RISOLUZIONE_PROBLEMI.md)
 - [Sicurezza](docs/SICUREZZA.md)

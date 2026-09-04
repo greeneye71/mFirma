@@ -25,6 +25,9 @@
 - Un errore provoca la rimozione del temporaneo, per quanto consentito dal file
   system.
 - Dimensione e data del sorgente vengono ricontrollate subito prima della firma.
+- Il PDF temporaneo usato per l'aspetto visibile contiene soltanto dati pubblici
+  del certificato e impostazioni confermate; viene eliminato deterministicamente
+  dopo successo o errore.
 
 ## Validazione
 

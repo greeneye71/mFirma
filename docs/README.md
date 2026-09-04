@@ -17,6 +17,12 @@ del progetto.
 
 - [Architettura](ARCHITETTURA.md): componenti, flusso dei dati e scelte
   tecniche.
+- [Specifica dell'interfaccia](SPECIFICA_INTERFACCIA.md): direzione approvata,
+  schermate, componenti PySide6/Fluent, stati e sequenza di implementazione.
+- [Aspetto visibile della firma](SPECIFICA_ASPETTO_FIRMA.md): contenuti,
+  gerarchia grafica, rendering vettoriale e test del riquadro applicato al PDF.
+- [Prompt per il prossimo sviluppo](PROMPT_PROSSIMO_SVILUPPO.md): istruzioni
+  operative pronte da affidare a Codex per l'implementazione.
 - [Piano di progetto](PIANO.md): fasi successive e rischi aperti.
 - [Piano di collaudo](COLLAUDO.md): prove automatiche e prove con hardware.
 - [Sicurezza](SICUREZZA.md): PIN, file, dipendenze e responsabilità operative.
@@ -25,6 +31,6 @@ del progetto.
 
 ## Stato della documentazione
 
-La documentazione descrive esclusivamente il comportamento implementato nella
-versione 0.1.0. Le funzioni previste dalla specifica ma non ancora presenti sono
-indicate come future o non implementate.
+La documentazione utente descrive esclusivamente il comportamento implementato
+nella versione 0.1.0. I documenti di progetto possono descrivere evoluzioni
+approvate ma non ancora implementate e le indicano esplicitamente.

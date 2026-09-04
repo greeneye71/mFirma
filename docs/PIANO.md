@@ -8,9 +8,10 @@ scelta consente sia il batch sia firme successive sullo stesso PDF, preservate
 da aggiornamenti incrementali. Non include TSA e non pretende di determinare lo
 status qualificato del certificato.
 
-La GUI usa Tkinter, incluso in Python, per mantenere ridotti dipendenze e
-pacchetto. La decisione può essere rivista se i test di usabilità richiederanno
-tray, anteprima PDF avanzata o tabelle molto grandi.
+La GUI 0.1.0 usa Tkinter. Per l'evoluzione Windows è stata approvata la
+migrazione a **PySide6 con PySide6-Fluent-Widgets**, necessaria per tray,
+anteprima PDF interattiva, navigazione Fluent e tabelle model/view. La specifica
+operativa è in [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
 
 ## Fasi
 
@@ -27,6 +28,8 @@ tray, anteprima PDF avanzata o tabelle molto grandi.
 - rilevamento assistito dei moduli PKCS#11 x64, lettura Key Usage e scelta del
   certificato con probe fuori processo;
 - test automatici con provider fittizio confinato ai test.
+- aspetto firma vettoriale completo/compatto con font incorporato, metadati
+  leggibili e importazione pubblica `StaticStampStyle`.
 
 ### 2. Collaudo hardware (quando saranno disponibili token e PDF)
 
@@ -42,6 +45,8 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 
 ### 3. Esperienza Windows
 
+- migrazione verticale della GUI da Tkinter a PySide6/Fluent, iniziando da
+  infrastruttura, modello tabellare e dashboard;
 - icona tray e avvio per utente;
 - anteprima della pagina con rettangolo spostabile;
 - selezione del token quando più dispositivi sono collegati;
@@ -66,7 +71,7 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 | Profilo | PAdES B-B, SHA-256, senza TSA | requisiti legali/aziendali |
 | Co-firma | nuovo campo incrementale | PDF reali e firme/certificazioni pregresse |
 | Output | stessa cartella, `_firmato` | permessi sulla share e politica definitiva |
-| UI | Tkinter | accessibilità e resa su postazioni reali |
+| UI | migrazione a PySide6 + PySide6-Fluent-Widgets | accessibilità, scaling, packaging e resa su postazioni reali |
 | Explorer | escluso dalla prima consegna | prova con 1, 50 e 100 percorsi |
 
 ## Tracciabilità essenziale

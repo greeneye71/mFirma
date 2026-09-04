@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .appearance import (
+    ReportLabSignatureAppearanceRenderer,
+    SignatureAppearanceVariant,
+    appearance_data_from_certificate,
+)
 from .config import SignatureConfig
 from .errors import PdfInvalidError, SignatureFailedError, SignedOutputInvalidError
 from .models import PageGeometry
@@ -83,6 +89,9 @@ def sign_pades(
     temporary_output: Path,
     signer: Any,
     settings: SignatureConfig,
+    *,
+    appearance_renderer: ReportLabSignatureAppearanceRenderer | None = None,
+    signing_time: datetime | None = None,
 ) -> None:
     """Aggiunge una firma PAdES B-B visibile all'ultima pagina."""
     from pyhanko import stamp
@@ -100,30 +109,53 @@ def sign_pades(
     )
     old_signature_count = embedded_signature_count(source)
     field_name = f"mFirma_{uuid.uuid4().hex[:12]}"
+    signature_time = signing_time or datetime.now().astimezone()
+    appearance_data = appearance_data_from_certificate(
+        getattr(signer, "signing_cert", None),
+        signing_time=signature_time,
+        signature_number=old_signature_count + 1,
+        reason=settings.reason,
+        location=settings.location,
+        fallback_name="Firmatario",
+    )
+    renderer = appearance_renderer or ReportLabSignatureAppearanceRenderer()
+    variant = SignatureAppearanceVariant(settings.appearance_variant)
 
     try:
-        with source.open("rb") as input_stream, temporary_output.open("wb") as output_stream:
-            writer = IncrementalPdfFileWriter(input_stream)
-            fields.append_signature_field(
-                writer,
-                sig_field_spec=fields.SigFieldSpec(
-                    sig_field_name=field_name,
-                    on_page=page_index,
-                    box=(placement.x1, placement.y1, placement.x2, placement.y2),
-                ),
+        with renderer.render_pdf(
+            appearance_data,
+            width_points=settings.width_points,
+            height_points=settings.height_points,
+            variant=variant,
+        ) as appearance_path:
+            style = stamp.StaticStampStyle.from_pdf_file(
+                str(appearance_path), border_width=0
             )
-            metadata = signers.PdfSignatureMetadata(
-                field_name=field_name,
-                md_algorithm="sha256",
-                subfilter=fields.SigSeedSubFilter.PADES,
-                reason=settings.reason or None,
-                location=settings.location or None,
-            )
-            style = stamp.TextStampStyle(
-                stamp_text="Firmato digitalmente da %(signer)s\nData: %(ts)s"
-            )
-            pdf_signer = signers.PdfSigner(metadata, signer=signer, stamp_style=style)
-            pdf_signer.sign_pdf(writer, output=output_stream)
+            with (
+                source.open("rb") as input_stream,
+                temporary_output.open("wb") as output_stream,
+            ):
+                writer = IncrementalPdfFileWriter(input_stream)
+                fields.append_signature_field(
+                    writer,
+                    sig_field_spec=fields.SigFieldSpec(
+                        sig_field_name=field_name,
+                        on_page=page_index,
+                        box=(placement.x1, placement.y1, placement.x2, placement.y2),
+                    ),
+                )
+                metadata = signers.PdfSignatureMetadata(
+                    field_name=field_name,
+                    md_algorithm="sha256",
+                    subfilter=fields.SigSeedSubFilter.PADES,
+                    reason=settings.reason or None,
+                    location=settings.location or None,
+                    name=appearance_data.signer_name,
+                )
+                pdf_signer = signers.PdfSigner(
+                    metadata, signer=signer, stamp_style=style
+                )
+                pdf_signer.sign_pdf(writer, output=output_stream)
     except Exception as exc:
         raise SignatureFailedError(f"Firma PDF non riuscita: {exc}") from exc
 

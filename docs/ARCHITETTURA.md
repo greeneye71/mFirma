@@ -1,5 +1,9 @@
 # Architettura
 
+> Questo documento descrive l'architettura implementata nella versione 0.1.0,
+> inclusa la GUI Tkinter. La migrazione approvata verso PySide6 e Fluent è
+> definita in [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
+
 ## Obiettivi
 
 L'architettura mantiene separati interfaccia, scansione, orchestrazione, PDF,
@@ -38,6 +42,7 @@ GUI Tkinter ───────> BatchOrchestrator
 | `batch.py` | Deduplicazione, firma seriale, annullamento ed esiti indipendenti |
 | `provider.py` | Apertura e chiusura della sessione PKCS#11 |
 | `pdf_service.py` | Campo visibile, PAdES B-B e verifica della nuova firma |
+| `appearance.py` | Modello e rendering vettoriale dell'aspetto, indipendente dalla GUI |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
@@ -108,15 +113,26 @@ Il servizio PDF:
 
 1. legge geometria, CropBox e rotazione dell'ultima pagina;
 2. conta le firme incorporate già presenti;
-3. aggiunge un campo dal nome casuale;
-4. produce una firma PAdES con digest SHA-256;
-5. scrive esclusivamente nel file temporaneo;
-6. riapre il risultato e controlla che esista una firma in più;
-7. verifica integrità e validità crittografica della nuova firma;
-8. lascia all'output service la pubblicazione del risultato.
+3. costruisce `SignatureAppearanceData` dal certificato, dalle impostazioni e
+   dal numero di firme già presenti;
+4. genera con ReportLab una pagina PDF vettoriale temporanea con font Vera
+   incorporato e la importa tramite l'API pubblica
+   `StaticStampStyle.from_pdf_file()`;
+5. aggiunge un campo dal nome casuale;
+6. produce una firma PAdES con digest SHA-256;
+7. scrive esclusivamente nel file temporaneo;
+8. riapre il risultato e controlla che esista una firma in più;
+9. verifica integrità e validità crittografica della nuova firma;
+10. elimina sempre il PDF temporaneo dell'aspetto e lascia all'output service
+    la pubblicazione del risultato.
 
 La verifica usa il certificato del firmatario come ancora locale per isolare il
 controllo crittografico. Non esegue una valutazione normativa, EUTL, OCSP o CRL.
+
+Lo spike con pyHanko 0.37.0 ha confermato dimensioni esatte, testo estraibile,
+font incorporato, resa vettoriale al 400%, firma e verifica. Non sono state
+usate API private. Lo stesso renderer è il contratto che dovrà consumare la
+futura anteprima Qt; la migrazione della GUI non è inclusa in questo incremento.
 
 ## Confini intenzionali
 

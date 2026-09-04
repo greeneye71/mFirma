@@ -24,8 +24,9 @@ class OutputConfig:
 class SignatureConfig:
     preset: str = "bottom_right"
     margin_points: float = 24.0
-    width_points: float = 180.0
-    height_points: float = 60.0
+    width_points: float = 240.0
+    height_points: float = 92.0
+    appearance_variant: str = "complete"
     reason: str = ""
     location: str = ""
 
@@ -63,6 +64,8 @@ class AppConfig:
             raise ValueError("Il margine non può essere negativo")
         if self.signature.width_points <= 0 or self.signature.height_points <= 0:
             raise ValueError("Le dimensioni della firma devono essere positive")
+        if self.signature.appearance_variant not in {"complete", "compact"}:
+            raise ValueError("Variante aspetto firma non valida")
         suffix = self.output.suffix
         if not suffix or any(char in suffix for char in '<>:"/\\|?*'):
             raise ValueError("Suffisso di output non valido")
@@ -73,11 +76,19 @@ class AppConfig:
         unknown = set(raw) - allowed_top
         if unknown:
             raise ValueError(f"Campi configurazione sconosciuti: {', '.join(sorted(unknown))}")
+        signature_values = dict(raw.get("signature", {}))
+        if (
+            "appearance_variant" not in signature_values
+            and signature_values.get("width_points") == 180.0
+            and signature_values.get("height_points") == 60.0
+        ):
+            signature_values["width_points"] = 240.0
+            signature_values["height_points"] = 92.0
         config = cls(
             config_version=int(raw.get("config_version", 1)),
             monitor=MonitorConfig(**raw.get("monitor", {})),
             output=OutputConfig(**raw.get("output", {})),
-            signature=SignatureConfig(**raw.get("signature", {})),
+            signature=SignatureConfig(**signature_values),
             pkcs11=Pkcs11Config(**raw.get("pkcs11", {})),
         )
         config.validate()

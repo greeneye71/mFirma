@@ -52,6 +52,9 @@ python -m venv .venv
 `requirements.lock` contiene le versioni provate con CPython 3.13 x64. Dopo il
 collaudo hardware il file dovrà essere rigenerato e nuovamente verificato.
 
+ReportLab 5.0.1 è incluso per generare l'aspetto visibile vettoriale della firma
+e incorpora il font nel PDF. Non è richiesta un'installazione separata del font.
+
 ## Aggiornamento e riparazione
 
 Dopo `git pull`, eseguire nuovamente `installa_mFirma.cmd` se sono cambiati

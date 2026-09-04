@@ -24,6 +24,10 @@ La suite copre:
 - estrazione di soggetto, emittente, validità e uso dai certificati pubblici.
 - associazione di certificato e chiave privata tramite lo stesso ID PKCS#11,
   anche quando l'etichetta della chiave è diversa.
+- modello e rendering dell'aspetto completo/compatto, dimensioni MediaBox,
+  testo estraibile, font incorporato, Unicode, timezone, campi opzionali e
+  cleanup dei temporanei;
+- integrazione dell'aspetto su firma, co-firma e pagine ruotate 0/90/180/270.
 
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -11,7 +12,41 @@ from pyhanko.sign import signers
 from pypdf import PdfReader, PdfWriter
 
 from mfirma.config import SignatureConfig
+from mfirma.appearance import ReportLabSignatureAppearanceRenderer
 from mfirma.pdf_service import embedded_signature_count, sign_pades
+
+
+def _resources_have_embedded_font(resources) -> bool:
+    for font_reference in resources.get("/Font", {}).values():
+        font = font_reference.get_object()
+        descriptors = []
+        if "/FontDescriptor" in font:
+            descriptors.append(font["/FontDescriptor"])
+        for descendant in font.get("/DescendantFonts", []):
+            descendant = descendant.get_object()
+            if "/FontDescriptor" in descendant:
+                descriptors.append(descendant["/FontDescriptor"])
+        if any(
+            any(key in descriptor for key in ("/FontFile", "/FontFile2", "/FontFile3"))
+            for descriptor in descriptors
+        ):
+            return True
+    for xobject_reference in resources.get("/XObject", {}).values():
+        xobject = xobject_reference.get_object()
+        nested_resources = xobject.get("/Resources")
+        if nested_resources and _resources_have_embedded_font(nested_resources):
+            return True
+    return False
+
+
+class RecordingAppearanceRenderer(ReportLabSignatureAppearanceRenderer):
+    def __init__(self, temporary_directory: Path):
+        super().__init__(temporary_directory)
+        self.rendered_data = []
+
+    def render_pdf(self, data, **kwargs):
+        self.rendered_data.append(data)
+        return super().render_pdf(data, **kwargs)
 
 
 def make_signer(workdir: Path):
@@ -65,11 +100,77 @@ def test_pades_supports_batch_style_sequential_cosigning(workdir: Path):
         writer.write(stream)
     signer = make_signer(workdir)
     settings = SignatureConfig(preset="bottom_right")
+    renderer = RecordingAppearanceRenderer(workdir)
 
-    sign_pades(source, first, signer, settings)
-    sign_pades(first, second, signer, settings)
+    sign_pades(source, first, signer, settings, appearance_renderer=renderer)
+    sign_pades(first, second, signer, settings, appearance_renderer=renderer)
 
     assert embedded_signature_count(first) == 1
     assert embedded_signature_count(second) == 2
     assert len(PdfReader(second).pages) == 1
+    assert [data.signature_number for data in renderer.rendered_data] == [1, 2]
 
+
+def test_pades_uses_appearance_metadata_and_cleans_temporary_files(workdir: Path):
+    source = workdir / "metadata-source.pdf"
+    output = workdir / "metadata-signed.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=595, height=842)
+    with source.open("wb") as stream:
+        writer.write(stream)
+    signer = make_signer(workdir)
+    renderer = RecordingAppearanceRenderer(workdir)
+    settings = SignatureConfig(
+        preset="top_left",
+        reason="Approvazione del documento",
+        location="Roma",
+    )
+
+    sign_pades(
+        source,
+        output,
+        signer,
+        settings,
+        appearance_renderer=renderer,
+        signing_time=datetime.datetime(
+            2026, 9, 5, 10, 48, 32, tzinfo=datetime.timezone.utc
+        ),
+    )
+
+    from pyhanko.pdf_utils.reader import PdfFileReader
+
+    with output.open("rb") as stream:
+        signature = PdfFileReader(stream).embedded_signatures[0].sig_object
+        assert str(signature["/Reason"]) == "Approvazione del documento"
+        assert str(signature["/Location"]) == "Roma"
+        assert str(signature["/Name"]) == "Firmatario di test"
+    output_reader = PdfReader(output)
+    signature_widget = output_reader.pages[0]["/Annots"][-1].get_object()
+    normal_appearance = signature_widget["/AP"]["/N"].get_object()
+    assert _resources_have_embedded_font(normal_appearance["/Resources"])
+    assert renderer.rendered_data[0].reason == "Approvazione del documento"
+    assert renderer.rendered_data[0].location == "Roma"
+    assert not list(workdir.glob("mfirma-appearance-*.pdf"))
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_pades_appearance_stays_valid_on_rotated_pages(workdir: Path, rotation: int):
+    source = workdir / f"source-{rotation}.pdf"
+    output = workdir / f"signed-{rotation}.pdf"
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=595, height=842)
+    page.rotate(rotation)
+    with source.open("wb") as stream:
+        writer.write(stream)
+
+    sign_pades(
+        source,
+        output,
+        make_signer(workdir),
+        SignatureConfig(preset="bottom_right"),
+        appearance_renderer=ReportLabSignatureAppearanceRenderer(workdir),
+    )
+
+    assert embedded_signature_count(output) == 1
+    assert len(PdfReader(output).pages) == 1
+    assert not list(workdir.glob("mfirma-appearance-*.pdf"))

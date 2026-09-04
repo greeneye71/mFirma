@@ -2,6 +2,12 @@
 
 ## Non rilasciato
 
+- sostituito il riquadro testuale minimo con un aspetto firma vettoriale
+  completo/compatto, font incorporato e informazioni neutrali verificabili;
+- aggiunti modello `SignatureAppearanceData`, numero progressivo della firma,
+  timezone esplicito e cleanup deterministico del temporaneo dell'aspetto;
+- aggiornati i valori predefiniti a 240 × 92 pt, con migrazione del precedente
+  default 180 × 60 pt;
 - aggiunto `installa_mFirma.cmd` per creare o riparare automaticamente `.venv`;
 - `avvia_mFirma.cmd` prepara l'ambiente al primo avvio se necessario;
 - aggiunte istruzioni per installare Python 3.13 tramite `winget`.

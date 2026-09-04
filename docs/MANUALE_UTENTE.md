@@ -66,9 +66,16 @@ Nella parte superiore della finestra compilare:
 | Certificato | Etichetta del certificato di firma; usare `Leggi card…` per sceglierla |
 | Chiave | Etichetta della chiave privata, solo se diversa dal certificato |
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
+| Aspetto | `Completo` (240 × 92 pt) oppure `Compatto` (190 × 68 pt) |
 
 La configurazione viene salvata quando si avvia una firma. Il PIN non fa parte
 della configurazione.
+
+L'aspetto completo mostra i dati pubblici essenziali del firmatario, la data e
+l'ora del computer con il fuso, il profilo PAdES B-B, SHA-256 e il numero della
+firma nel documento. La frase `Verificare la firma con un lettore PDF` è
+intenzionalmente neutra: il riquadro non dichiara la validità legale, la fiducia
+del certificato o la presenza di una marca temporale TSA.
 
 ### Rilevare automaticamente la DLL
 
