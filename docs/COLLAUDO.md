@@ -23,6 +23,21 @@ La suite copre:
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.
 
+## Collaudo dell'installazione
+
+Su una copia pulita del progetto in Windows 11 x64:
+
+1. verificare che `.venv` non sia presente;
+2. eseguire `avvia_mFirma.cmd` con una connessione Internet disponibile;
+3. verificare creazione di `.venv`, installazione e apertura dell'applicazione;
+4. chiudere e riavviare, verificando che non reinstalli le dipendenze;
+5. eseguire `installa_mFirma.cmd` e verificare che la riparazione sia idempotente;
+6. ripetere in un percorso contenente spazi;
+7. provare separatamente il messaggio mostrato in assenza di Python compatibile.
+
+Il test su PC privo di Python resta rinviato al futuro pacchetto autonomo: lo
+script attuale deve rilevare il requisito mancante, non incorporare Python.
+
 ## Dati necessari per il collaudo reale
 
 - marca e modello del token;
@@ -102,4 +117,3 @@ Il campione finale dovrebbe includere:
 La combinazione hardware può essere dichiarata supportata soltanto dopo una
 firma singola e una co-firma validate, un batch di almeno dieci file e verifica
 che il PIN non compaia in configurazione o messaggi diagnostici salvati.
-

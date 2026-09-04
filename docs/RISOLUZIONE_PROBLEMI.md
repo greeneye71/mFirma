@@ -2,9 +2,38 @@
 
 ## L'applicazione non si avvia
 
-- Verificare che esista `.venv\Scripts\pythonw.exe`.
+- Eseguire `installa_mFirma.cmd` e leggere l'eventuale errore mostrato.
+- Verificare che Python 3.11 o successivo a 64 bit sia installato.
+- Verificare che la prima installazione possa accedere a Internet.
 - Dalla radice eseguire `.venv\Scripts\python -m mfirma` per vedere l'errore.
-- Se manca un modulo, ripetere l'installazione da `requirements.lock`.
+- Se manca un modulo, `installa_mFirma.cmd` ripete l'installazione da
+  `requirements.lock` e ripara l'ambiente.
+
+## Python non trovato o versione non compatibile
+
+Lo script richiede Python 3.11 o successivo a 64 bit. In PowerShell eseguire:
+
+```powershell
+winget install --id Python.Python.3.13 -e
+```
+
+Chiudere e riaprire PowerShell prima di riprovare. Se `winget` non è
+disponibile, installare CPython x64 dal sito ufficiale Python e abilitare il
+Python Launcher durante l'installazione.
+
+## Installazione delle dipendenze non riuscita
+
+- controllare la connessione Internet;
+- su una rete aziendale verificare con l'amministratore proxy, certificati TLS
+  e accesso all'indice Python usato dall'organizzazione;
+- chiudere eventuali antivirus o strumenti che tengono bloccata `.venv`, senza
+  disattivare le protezioni aziendali;
+- eseguire nuovamente `installa_mFirma.cmd` per tentare la riparazione;
+- se continua a fallire, rinominare `.venv` in `.venv_old` e ripetere
+  l'installazione per creare un ambiente pulito.
+
+Conservare il messaggio completo mostrato nella finestra: indica quale fase tra
+creazione dell'ambiente, dipendenze e installazione di mFirma non è riuscita.
 
 ## DLL PKCS#11 non trovata
 
@@ -80,4 +109,3 @@ campione di collaudo. La resa deve essere validata sui PDF reali prima del pilot
 - PDF di esempio anonimizzato, quando possibile.
 
 Non inviare PIN, chiavi private o schermate che mostrino dati riservati.
-

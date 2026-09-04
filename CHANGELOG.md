@@ -1,5 +1,11 @@
 # Changelog
 
+## Non rilasciato
+
+- aggiunto `installa_mFirma.cmd` per creare o riparare automaticamente `.venv`;
+- `avvia_mFirma.cmd` prepara l'ambiente al primo avvio se necessario;
+- aggiunte istruzioni per installare Python 3.13 tramite `winget`.
+
 ## 0.1.0 - 2026-09-04
 
 - prima GUI Tkinter;
@@ -13,4 +19,3 @@
 - configurazione atomica senza PIN;
 - probe pubblico PKCS#11;
 - suite automatica e documentazione iniziale.
-

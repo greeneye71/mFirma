@@ -12,9 +12,29 @@ PIN per ogni firma. PAdES usa aggiornamenti incrementali, quindi una firma già
 presente viene preservata ed è possibile aggiungerne un'altra selezionando
 manualmente il PDF firmato.
 
-## Avvio per sviluppo
+## Installazione e avvio
 
 Richiede Windows 11 x64, Python 3.11+ x64 e il middleware ufficiale del token.
+
+Per l'uso normale, dopo aver scaricato il progetto, fare doppio clic su
+`avvia_mFirma.cmd`. Al primo avvio lo script crea automaticamente l'ambiente
+locale `.venv`, installa le dipendenze e avvia l'applicazione. La prima
+preparazione richiede una connessione Internet e può durare alcuni minuti.
+
+Per installare o riparare manualmente l'ambiente, fare doppio clic su
+`installa_mFirma.cmd`. Eseguirlo anche dopo un aggiornamento del progetto se
+sono cambiate le dipendenze.
+
+Se Python non è installato, aprire PowerShell ed eseguire:
+
+```powershell
+winget install --id Python.Python.3.13 -e
+```
+
+Chiudere e riaprire il terminale dopo l'installazione di Python, quindi avviare
+nuovamente `avvia_mFirma.cmd`.
+
+Per preparare manualmente l'ambiente di sviluppo:
 
 ```powershell
 python -m venv .venv
@@ -22,9 +42,6 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -e . --no-deps
 .venv\Scripts\python -m mfirma
 ```
-
-Dopo l'installazione iniziale si può anche fare doppio clic su
-`avvia_mFirma.cmd`.
 
 Nella finestra:
 
@@ -67,13 +84,14 @@ Implementato:
 - probe PKCS#11 senza autenticazione e test del nucleo senza token.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
-selezione guidata del certificato, destinazione separata, packaging e provider
-CSP/CNG. Questi punti sono pianificati in [docs/PIANO.md](docs/PIANO.md).
+selezione guidata del certificato, destinazione separata, pacchetto autonomo
+con installer Windows e provider CSP/CNG. Questi punti sono pianificati in
+[docs/PIANO.md](docs/PIANO.md).
 
 ## Test
 
 ```powershell
-python -m pytest
+.venv\Scripts\python -m pytest -p no:cacheprovider
 ```
 
 I test automatici non provano la validità legale o la compatibilità hardware.

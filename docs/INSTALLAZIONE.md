@@ -8,12 +8,40 @@
 - DLL PKCS#11 della stessa architettura del processo Python;
 - accesso in lettura ai sorgenti e in scrittura alle relative cartelle.
 
-La versione attuale è un ambiente di sviluppo eseguibile. Non è ancora
-disponibile un installer autonomo per PC senza Python.
+La versione attuale include uno script di preparazione e riparazione locale, ma
+richiede che Python sia presente sul PC. Non è ancora disponibile un pacchetto
+autonomo con installer e disinstallazione Windows per PC senza Python.
 
 ## Preparazione dell'ambiente
 
-Aprire PowerShell nella cartella del progetto ed eseguire:
+Fare doppio clic su `avvia_mFirma.cmd`: al primo avvio vengono creati
+automaticamente l'ambiente `.venv` e l'installazione locale di mFirma. La prima
+preparazione richiede una connessione Internet.
+
+Per installare o riparare l'ambiente senza avviare l'applicazione, fare doppio
+clic su `installa_mFirma.cmd`.
+
+Lo script:
+
+1. cerca prima il Python Launcher (`py`) e poi il comando `python`;
+2. accetta soltanto Python 3.11 o successivo a 64 bit;
+3. crea `.venv` nella cartella del progetto, se non esiste;
+4. installa le versioni definite in `requirements.lock`;
+5. installa il progetto in modalità modificabile e verifica gli import.
+
+Non copiare `.venv` da un altro PC: contiene percorsi legati alla macchina e
+deve essere ricreato localmente.
+
+Se manca Python 3.11+ x64, installare la versione verificata aprendo PowerShell
+ed eseguendo:
+
+```powershell
+winget install --id Python.Python.3.13 -e
+```
+
+Dopo l'installazione chiudere e riaprire il terminale. In alternativa, per
+preparare tutto manualmente, aprire PowerShell nella cartella del progetto ed
+eseguire:
 
 ```powershell
 python -m venv .venv
@@ -24,13 +52,24 @@ python -m venv .venv
 `requirements.lock` contiene le versioni provate con CPython 3.13 x64. Dopo il
 collaudo hardware il file dovrà essere rigenerato e nuovamente verificato.
 
+## Aggiornamento e riparazione
+
+Dopo `git pull`, eseguire nuovamente `installa_mFirma.cmd` se sono cambiati
+`requirements.lock` o `pyproject.toml`. Lo script è rieseguibile e aggiorna
+l'ambiente esistente senza toccare la configurazione utente o i PDF.
+
+Se l'ambiente è danneggiato e la riparazione non riesce, chiudere mFirma,
+rinominare `.venv` in `.venv_old` e rieseguire `installa_mFirma.cmd`. Dopo aver
+verificato il funzionamento, la vecchia cartella può essere eliminata.
+
 ## Avvio
 
 ```powershell
 .venv\Scripts\python -m mfirma
 ```
 
-Oppure fare doppio clic su `avvia_mFirma.cmd`.
+Oppure fare doppio clic su `avvia_mFirma.cmd`, che crea o ripara l'ambiente
+quando Python o uno dei moduli richiesti non sono disponibili.
 
 ## Individuare la DLL e le etichette
 
@@ -104,4 +143,3 @@ aggiornamento eseguire almeno:
 ```
 
 Ripetere poi la firma singola, la co-firma e il batch con il token reale.
-

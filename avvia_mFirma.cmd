@@ -1,10 +1,31 @@
 @echo off
-setlocal
-set "MFIRMA_PYTHON=%~dp0.venv\Scripts\pythonw.exe"
-if not exist "%MFIRMA_PYTHON%" (
-  echo Ambiente Python non trovato. Segui le istruzioni in README.md.
+setlocal EnableExtensions
+cd /d "%~dp0"
+
+set "MFIRMA_PYTHON=.venv\Scripts\python.exe"
+set "MFIRMA_PYTHONW=.venv\Scripts\pythonw.exe"
+
+rem Al primo avvio crea l'ambiente; lo ripara anche se manca un modulo.
+if not exist "%MFIRMA_PYTHON%" goto install
+"%MFIRMA_PYTHON%" -c "import mfirma, pyhanko, pypdf" >nul 2>&1
+if errorlevel 1 goto install
+goto start_app
+
+:install
+echo Preparazione di mFirma al primo avvio...
+call "%~dp0installa_mFirma.cmd" --from-launcher
+if errorlevel 1 (
+  echo.
+  echo Installazione non completata. Leggi il messaggio qui sopra.
   pause
   exit /b 1
 )
-start "mFirma" "%MFIRMA_PYTHON%" -m mfirma
 
+:start_app
+if not exist "%MFIRMA_PYTHONW%" (
+  echo Ambiente Python incompleto: manca %MFIRMA_PYTHONW%.
+  echo Esegui installa_mFirma.cmd per ripararlo.
+  pause
+  exit /b 1
+)
+start "mFirma" "%MFIRMA_PYTHONW%" -m mfirma

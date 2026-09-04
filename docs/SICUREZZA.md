@@ -53,6 +53,12 @@ release pilota occorre:
 - non redistribuire la DLL del produttore senza licenza;
 - firmare eseguibili e installer, se disponibile un certificato di code signing.
 
+`installa_mFirma.cmd` scarica i pacchetti tramite `pip` al primo utilizzo. Le
+versioni sono fissate, ma il lock attuale non contiene hash degli artefatti:
+l'installazione va quindi eseguita soltanto su reti e indici Python considerati
+affidabili. Il futuro pacchetto di distribuzione dovrà usare artefatti verificati
+e riproducibili.
+
 ## Modello di minaccia essenziale
 
 | Rischio | Controllo attuale |
@@ -64,4 +70,3 @@ release pilota occorre:
 | Firma solo grafica | verifica dell'oggetto firma incorporato |
 | Errore su un file blocca tutti | esito indipendente per ogni job |
 | DLL non autorizzata | percorso esplicito; provenienza da verificare operativamente |
-

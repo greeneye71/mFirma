@@ -23,6 +23,7 @@ tray, anteprima PDF avanzata o tabelle molto grandi.
 - provider PKCS#11 isolato e sessione batch;
 - firma PAdES B-B e verifica immediata;
 - GUI per configurare, selezionare e firmare più file;
+- bootstrap Windows per creare e riparare automaticamente `.venv`;
 - test automatici con provider fittizio confinato ai test.
 
 ### 2. Collaudo hardware (quando saranno disponibili token e PDF)
@@ -48,7 +49,8 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 ### 4. Pilot
 
 - destinazione separata preservando l'albero relativo;
-- pacchetto PyInstaller one-folder e installer per utente;
+- pacchetto PyInstaller one-folder e installer Windows per utente, autonomi da
+  Python;
 - prove su share con 1.000 PDF, rete interrotta e copie lente;
 - test su PC pulito con antivirus e policy aziendali;
 - manuale breve e release pilota.
@@ -76,4 +78,3 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 | FR-OUT-001..010 | `output.py` | `test_output.py` |
 | FR-BAT-001..007 | `batch.py`, `app.py` | `test_batch.py`, batch reali |
 | AC-011..017 | integrazione PKCS#11/PDF | obbligatoriamente manuale con hardware |
-

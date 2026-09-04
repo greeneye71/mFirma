@@ -11,7 +11,8 @@
 - enumerazione e scelta del certificato direttamente nella GUI;
 - destinazione separata con conservazione dell'albero relativo;
 - cronologia, log rotanti ed esportazione del riepilogo;
-- installer e pacchetto per PC senza Python;
+- pacchetto autonomo e installer Windows con disinstallazione per PC senza
+  Python; è disponibile soltanto lo script locale `installa_mFirma.cmd`;
 - provider Windows CSP/CNG;
 - TSA e profili PAdES B-T, B-LT e B-LTA.
 
@@ -34,4 +35,3 @@
 Nessun modello di token è ancora dichiarato ufficialmente supportato. La
 struttura software e la firma PAdES sono state verificate con una chiave software
 di test; PKCS#11 resta da verificare con hardware reale.
-

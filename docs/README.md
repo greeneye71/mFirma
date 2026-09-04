@@ -7,8 +7,8 @@ del progetto.
 ## Per chi usa l'applicazione
 
 - [Manuale utente](MANUALE_UTENTE.md): avvio, selezione e firma dei PDF.
-- [Installazione e configurazione](INSTALLAZIONE.md): ambiente Python, token e
-  DLL PKCS#11.
+- [Installazione e configurazione](INSTALLAZIONE.md): primo avvio automatico,
+  riparazione dell'ambiente Python, token e DLL PKCS#11.
 - [Risoluzione dei problemi](RISOLUZIONE_PROBLEMI.md): errori frequenti e
   controlli da eseguire.
 - [Limiti noti](LIMITI_NOTI.md): cosa non è ancora incluso nella versione.
@@ -28,4 +28,3 @@ del progetto.
 La documentazione descrive esclusivamente il comportamento implementato nella
 versione 0.1.0. Le funzioni previste dalla specifica ma non ancora presenti sono
 indicate come future o non implementate.
-

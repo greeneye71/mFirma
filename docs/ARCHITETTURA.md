@@ -43,6 +43,18 @@ GUI Tkinter ───────> BatchOrchestrator
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
 | `probe.py` | Enumerazione pubblica di token e certificati senza PIN |
 
+## Avvio e ambiente locale
+
+`avvia_mFirma.cmd` è il punto di ingresso per l'utente. Prima dell'avvio
+controlla l'esistenza dell'interprete virtuale e prova a importare mFirma e le
+dipendenze principali. Se il controllo fallisce richiama
+`installa_mFirma.cmd`, che crea o ripara `.venv` usando `requirements.lock` e
+installa il progetto in modalità modificabile.
+
+Questo bootstrap resta esterno al codice applicativo e non è un installer
+Windows autonomo: Python deve essere già installato sul PC. Configurazione e PDF
+sono esterni a `.venv`, quindi la ricostruzione dell'ambiente non li modifica.
+
 ## Modello del batch
 
 Ogni elemento conserva:
@@ -82,4 +94,3 @@ controllo crittografico. Non esegue una valutazione normativa, EUTL, OCSP o CRL.
 - Il provider non decide nomi o posizioni.
 - Il servizio PDF non salva né acquisisce il PIN.
 - Il fake provider esiste solo nei test.
-

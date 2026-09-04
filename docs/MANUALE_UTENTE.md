@@ -14,16 +14,40 @@ presenti nella cartella.
 
 Verificare che:
 
-1. il middleware ufficiale del token sia installato;
-2. token o smart card siano collegati;
-3. la DLL PKCS#11 sia a 64 bit, come Python e l'applicazione;
-4. siano noti il percorso della DLL e l'etichetta del certificato;
-5. l'utente abbia permesso di lettura e scrittura nelle cartelle dei PDF.
+1. Python 3.11 o successivo a 64 bit sia installato;
+2. al primo avvio sia disponibile una connessione Internet;
+3. il middleware ufficiale del token sia installato;
+4. token o smart card siano collegati;
+5. la DLL PKCS#11 sia a 64 bit, come Python e l'applicazione;
+6. siano noti il percorso della DLL e l'etichetta del certificato;
+7. l'utente abbia permesso di lettura e scrittura nelle cartelle dei PDF.
 
 ## Avvio
 
-Fare doppio clic su `avvia_mFirma.cmd`. In alternativa, dalla radice del
-progetto eseguire:
+Fare doppio clic su `avvia_mFirma.cmd`.
+
+Al primo avvio si apre una finestra di preparazione che:
+
+1. verifica la presenza di Python 3.11+ a 64 bit;
+2. crea l'ambiente locale `.venv`;
+3. installa le dipendenze indicate in `requirements.lock`;
+4. installa mFirma nell'ambiente locale;
+5. apre l'applicazione al termine.
+
+La preparazione può durare alcuni minuti. Agli avvii successivi la finestra
+non viene mostrata se l'ambiente è completo.
+
+Se viene segnalata l'assenza di Python, aprire PowerShell ed eseguire:
+
+```powershell
+winget install --id Python.Python.3.13 -e
+```
+
+Chiudere e riaprire PowerShell dopo l'installazione, quindi fare nuovamente
+doppio clic su `avvia_mFirma.cmd`.
+
+Per riparare l'ambiente eseguire `installa_mFirma.cmd`. Per avviare
+l'applicazione dal terminale, dalla radice del progetto eseguire:
 
 ```powershell
 .venv\Scripts\python -m mfirma
@@ -120,4 +144,3 @@ Il nuovo nome avrà un altro suffisso, per esempio
 Durante il batch premere `Annulla dopo il file corrente`. L'operazione già
 consegnata al middleware non viene interrotta bruscamente. I file successivi
 risultano annullati e quelli completati restano validi.
-
