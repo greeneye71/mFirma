@@ -14,6 +14,10 @@ class PdfInvalidError(MFirmaError):
     code = "PDF_INVALID"
 
 
+class SignatureFailedError(MFirmaError):
+    code = "SIGNATURE_FAILED"
+
+
 class ProviderConfigurationError(MFirmaError):
     code = "MODULE_LOAD_FAILED"
 

@@ -44,6 +44,7 @@ class ModuleCandidate:
     token_labels: tuple[str, ...] = ()
     certificate_labels: tuple[str, ...] = ()
     document_signing_labels: tuple[str, ...] = ()
+    certificate_ids: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,6 +281,7 @@ def discover_pkcs11_modules(
         token_labels: set[str] = set()
         certificate_labels: set[str] = set()
         document_signing_labels: set[str] = set()
+        certificate_ids: dict[str, str] = {}
         for token in tokens:
             if not isinstance(token, dict):
                 continue
@@ -295,6 +297,9 @@ def discover_pkcs11_modules(
                     if isinstance(certificate_label, str) and certificate_label.strip():
                         clean_label = certificate_label.strip()
                         certificate_labels.add(clean_label)
+                        identifier = certificate.get("id_hex")
+                        if isinstance(identifier, str) and identifier:
+                            certificate_ids.setdefault(clean_label, identifier)
                         key_usage = certificate.get("key_usage")
                         if (
                             isinstance(key_usage, dict)
@@ -309,6 +314,9 @@ def discover_pkcs11_modules(
             certificate_labels=tuple(sorted(certificate_labels, key=str.casefold)),
             document_signing_labels=tuple(
                 sorted(document_signing_labels, key=str.casefold)
+            ),
+            certificate_ids=tuple(
+                sorted(certificate_ids.items(), key=lambda item: item[0].casefold())
             ),
         )
 

@@ -10,6 +10,7 @@ def test_config_roundtrip_has_no_pin_field(workdir: Path):
     config.monitor.root = r"\\server\Da firmare"
     config.pkcs11.module_path = r"C:\Vendor\token.dll"
     config.pkcs11.certificate_label = "Firma"
+    config.pkcs11.certificate_id = "445333"
 
     repository = ConfigRepository(path)
     repository.save(config)
@@ -17,3 +18,17 @@ def test_config_roundtrip_has_no_pin_field(workdir: Path):
 
     assert asdict(loaded) == asdict(config)
     assert "pin" not in path.read_text(encoding="utf-8").casefold()
+
+
+def test_old_config_without_certificate_id_remains_supported():
+    config = AppConfig.from_dict(
+        {
+            "config_version": 1,
+            "pkcs11": {
+                "module_path": r"C:\Vendor\token.dll",
+                "certificate_label": "Firma",
+            },
+        }
+    )
+
+    assert config.pkcs11.certificate_id == ""

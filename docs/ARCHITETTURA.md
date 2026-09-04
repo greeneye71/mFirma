@@ -76,6 +76,12 @@ X.509 Key Usage: un unico certificato `contentCommitment` viene scelto come firm
 documenti, altrimenti le etichette sono presentate in una finestra di scelta.
 Non viene effettuato il login sul token.
 
+Per ogni certificato viene conservato anche il `CKA_ID` pubblico in formato
+esadecimale. Durante la firma pyHanko riceve tale ID sia come `cert_id` sia come
+`key_id`: il token può quindi associare certificato e chiave privata senza
+richiedere che abbiano la stessa etichetta. Se l'utente specifica esplicitamente
+`Chiave`, l'etichetta manuale mantiene la precedenza.
+
 ## Modello del batch
 
 Ogni elemento conserva:

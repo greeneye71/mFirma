@@ -10,6 +10,18 @@ from .errors import ProviderConfigurationError
 from .pdf_service import sign_pades
 
 
+def _decode_pkcs11_id(value: str) -> bytes | None:
+    if not value:
+        return None
+    try:
+        decoded = bytes.fromhex(value)
+    except ValueError as exc:
+        raise ProviderConfigurationError("ID PKCS#11 del certificato non valido") from exc
+    if not decoded:
+        raise ProviderConfigurationError("ID PKCS#11 del certificato vuoto")
+    return decoded
+
+
 class SigningSession(Protocol):
     def sign_pdf(self, source: Path, temporary_output: Path) -> None: ...
 
@@ -53,11 +65,15 @@ class Pkcs11SigningProvider:
                 if self.config.token_label
                 else None
             )
+            certificate_id = _decode_pkcs11_id(self.config.certificate_id)
+            key_label = self.config.key_label or None
             config = PKCS11SignatureConfig(
                 module_path=str(Path(self.config.module_path).resolve()),
                 token_criteria=criteria,
-                cert_label=self.config.certificate_label,
-                key_label=self.config.key_label or None,
+                cert_label=None if certificate_id else self.config.certificate_label,
+                cert_id=certificate_id,
+                key_label=key_label,
+                key_id=certificate_id if certificate_id and not key_label else None,
             )
             signing_context = PKCS11SigningContext(config, user_pin=pin)
             signer = signing_context.__enter__()
@@ -69,4 +85,3 @@ class Pkcs11SigningProvider:
             yield _PadesSigningSession(signer, self.signature)
         finally:
             signing_context.__exit__(None, None, None)
-

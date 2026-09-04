@@ -8,6 +8,10 @@
 - aggiunto il rilevamento assistito delle DLL PKCS#11 x64 con probe isolato.
 - lettura automatica e scelta guidata dell'etichetta del certificato dopo la
   selezione della DLL.
+- associazione della chiave privata tramite ID PKCS#11 del certificato, senza
+  presumere che le due etichette coincidano.
+- gli errori del dispositivo durante la firma non sono più classificati come
+  PDF non valido.
 
 ## 0.1.0 - 2026-09-04
 

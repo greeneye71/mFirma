@@ -23,7 +23,8 @@
 - le firme multiple nello stesso preset possono sovrapporsi visivamente;
 - la scansione è manuale, non periodica;
 - i file modificati negli ultimi cinque secondi non compaiono nella scansione;
-- certificato e chiave sono selezionati tramite etichetta testuale;
+- il certificato è presentato tramite etichetta, mentre la chiave viene
+  associata automaticamente tramite ID PKCS#11 quando disponibile;
 - un PDF cifrato non è supportato;
 - la compatibilità dipende dalla DLL e dal middleware del produttore;
 - il rilevamento usa posizioni e nomi plausibili e non può garantire di trovare

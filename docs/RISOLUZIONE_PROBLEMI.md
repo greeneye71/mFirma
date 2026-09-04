@@ -56,6 +56,15 @@ mostra una finestra se la scelta tra più certificati resta ambigua. Se non
 compare alcuna etichetta, il token può richiedere il login anche per
 l'enumerazione pubblica; consultare il middleware del produttore.
 
+## Chiave privata non trovata con l'etichetta del certificato
+
+Certificato e chiave privata possono avere etichette diverse. Riselezionare la
+DLL o il certificato con `Rileva…`/`Sfoglia…`: mFirma salverà il `CKA_ID` pubblico
+del certificato e userà lo stesso ID per trovare la chiave, senza dover compilare
+`Chiave (opz.)`. Le configurazioni create da versioni precedenti non contengono
+questo ID: mFirma prova a leggerlo automaticamente al primo avvio aggiornato;
+se il token non era collegato, ripetere con una nuova selezione.
+
 Un errore tipo `%1 non è un'applicazione Win32 valida` spesso indica una
 differenza tra architettura x86 e x64.
 

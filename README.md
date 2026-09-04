@@ -85,6 +85,7 @@ Implementato:
 - rilevamento assistito delle DLL PKCS#11 x64 installate, senza richiesta PIN.
 - lettura delle etichette pubbliche e scelta del certificato dopo aver indicato
   la DLL, con riconoscimento dell'uso `contentCommitment` per la firma documenti.
+- associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
 destinazione separata, pacchetto autonomo con installer Windows e provider

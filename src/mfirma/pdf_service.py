@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import SignatureConfig
-from .errors import PdfInvalidError, SignedOutputInvalidError
+from .errors import PdfInvalidError, SignatureFailedError, SignedOutputInvalidError
 from .models import PageGeometry
 from .placement import calculate_placement
 
@@ -125,7 +125,6 @@ def sign_pades(
             pdf_signer = signers.PdfSigner(metadata, signer=signer, stamp_style=style)
             pdf_signer.sign_pdf(writer, output=output_stream)
     except Exception as exc:
-        raise PdfInvalidError(f"Firma PDF non riuscita: {exc}") from exc
+        raise SignatureFailedError(f"Firma PDF non riuscita: {exc}") from exc
 
     verify_new_signature(temporary_output, old_signature_count)
-

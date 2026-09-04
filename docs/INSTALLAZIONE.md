@@ -143,6 +143,7 @@ Esempio:
     "module_path": "C:\\Program Files\\Vendor\\token-pkcs11.dll",
     "token_label": "TOKEN",
     "certificate_label": "FIRMA",
+    "certificate_id": "445333",
     "key_label": ""
   }
 }
@@ -151,6 +152,10 @@ Esempio:
 Il PIN non deve essere aggiunto manualmente al file. La scrittura della
 configurazione è atomica: prima viene creato un temporaneo e poi sostituito il
 file completo.
+
+`certificate_id` è l'identificativo pubblico PKCS#11 letto automaticamente dal
+token. mFirma lo usa per associare il certificato alla relativa chiave privata
+anche quando le due etichette sono diverse. Non è una chiave né un dato segreto.
 
 ## Aggiornamento delle dipendenze
 

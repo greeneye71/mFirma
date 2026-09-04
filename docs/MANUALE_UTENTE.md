@@ -94,6 +94,10 @@ della firma di documenti. Negli altri casi si apre una finestra di scelta che
 mostra l'uso rilevato: selezionare il certificato di firma e premere
 `Usa certificato`. Questa lettura non richiede il PIN.
 
+mFirma conserva anche l'ID pubblico del certificato e lo usa per trovare la
+chiave privata corrispondente. Il campo `Chiave (opz.)` può quindi restare vuoto
+anche quando certificato e chiave hanno etichette diverse.
+
 ## Caricare i documenti
 
 ### Dalla cartella organizzata per persona

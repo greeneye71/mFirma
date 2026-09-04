@@ -21,6 +21,8 @@ La suite copre:
 - firma PAdES software e seconda firma incrementale sullo stesso PDF.
 - riconoscimento statico di DLL PE x64, filtro dei nomi e raccolta delle
   etichette restituite dal probe isolato.
+- associazione di certificato e chiave privata tramite lo stesso ID PKCS#11,
+  anche quando l'etichetta della chiave è diversa.
 
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.

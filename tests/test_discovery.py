@@ -72,6 +72,7 @@ def test_discovery_collects_unique_token_and_certificate_labels(
             "certificates": [
                 {
                     "label": "Firma",
+                    "id_hex": "445333",
                     "key_usage": {"content_commitment": True},
                 },
                 {"label": "Firma"},
@@ -89,6 +90,7 @@ def test_discovery_collects_unique_token_and_certificate_labels(
     assert candidate.token_labels == ("Token A", "Token B")
     assert candidate.certificate_labels == ("Firma",)
     assert candidate.document_signing_labels == ("Firma",)
+    assert candidate.certificate_ids == (("Firma", "445333"),)
 
 
 def test_probe_uses_console_python_when_app_runs_with_pythonw(

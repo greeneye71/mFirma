@@ -35,6 +35,7 @@ class Pkcs11Config:
     module_path: str = ""
     token_label: str = ""
     certificate_label: str = ""
+    certificate_id: str = ""
     key_label: str = ""
 
 
@@ -117,4 +118,3 @@ class ConfigRepository:
             os.replace(temporary, self.path)
         finally:
             temporary.unlink(missing_ok=True)
-

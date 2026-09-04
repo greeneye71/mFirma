@@ -35,10 +35,24 @@ class MFirmaApp:
         self.progress_window: tk.Toplevel | None = None
         self.progress_bar: ttk.Progressbar | None = None
         self.progress_label: ttk.Label | None = None
+        self._certificate_ids_by_label: dict[str, str] = {}
+        self._certificate_id_module_path = ""
+        if self.config.pkcs11.certificate_label and self.config.pkcs11.certificate_id:
+            self._certificate_ids_by_label[self.config.pkcs11.certificate_label] = (
+                self.config.pkcs11.certificate_id
+            )
+            self._certificate_id_module_path = self.config.pkcs11.module_path
 
         self._build_variables()
         self._build_ui()
         self.root.after(100, self._poll_events)
+        if self.config.pkcs11.module_path and not self.config.pkcs11.certificate_id:
+            self.root.after(
+                250,
+                lambda: self._start_selected_module_probe(
+                    Path(self.config.pkcs11.module_path)
+                ),
+            )
 
     def _build_variables(self) -> None:
         self.monitor_root = tk.StringVar(value=self.config.monitor.root)
@@ -293,6 +307,8 @@ class MFirmaApp:
 
     def _apply_module_candidate(self, candidate: ModuleCandidate) -> None:
         self.module_path.set(str(candidate.path))
+        self._certificate_ids_by_label = dict(candidate.certificate_ids)
+        self._certificate_id_module_path = str(candidate.path)
         current_token = self.token_label.get().strip()
         if len(candidate.token_labels) == 1 and (
             not current_token or current_token not in candidate.token_labels
@@ -394,6 +410,12 @@ class MFirmaApp:
         self.config.pkcs11.module_path = self.module_path.get().strip()
         self.config.pkcs11.token_label = self.token_label.get().strip()
         self.config.pkcs11.certificate_label = self.certificate_label.get().strip()
+        if self.config.pkcs11.module_path == self._certificate_id_module_path:
+            self.config.pkcs11.certificate_id = self._certificate_ids_by_label.get(
+                self.config.pkcs11.certificate_label, ""
+            )
+        else:
+            self.config.pkcs11.certificate_id = ""
         self.config.pkcs11.key_label = self.key_label.get().strip()
         self.config.signature.preset = self.preset.get()
         self.repository.save(self.config)
