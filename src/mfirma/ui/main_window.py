@@ -4,7 +4,14 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl, Signal, Slot
-from PySide6.QtGui import QCloseEvent, QDesktopServices
+from PySide6.QtGui import (
+    QCloseEvent,
+    QDesktopServices,
+    QGuiApplication,
+    QKeySequence,
+    QShowEvent,
+    QShortcut,
+)
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qfluentwidgets import FluentIcon, MSFluentWindow
 
@@ -23,6 +30,11 @@ from .pages.result_page import ResultPage
 from .pages.settings_page import SettingsPage
 from .state import DeviceState, ScanState
 from .tray import SystemTrayController
+from .window_state import (
+    WindowState,
+    WindowStateRepository,
+    fit_window_geometry,
+)
 from .workers import (
     DiscoveryController,
     DiscoveryOperation,
@@ -49,6 +61,7 @@ class MFirmaQtWindow(MSFluentWindow):
         discovery_controller: DiscoveryController | None = None,
         preview_controller: PreviewController | None = None,
         signing_controller: SigningController | None = None,
+        window_state_repository: WindowStateRepository | None = None,
         tray_available: bool | None = None,
         auto_scan: bool = True,
     ):
@@ -58,6 +71,12 @@ class MFirmaQtWindow(MSFluentWindow):
             self.config = self.repository.load()
         except Exception:
             self.config = AppConfig()
+        self.window_state_repository = (
+            window_state_repository
+            or WindowStateRepository(
+                self.repository.path.with_name("window-state.json")
+            )
+        )
         self.scan_controller = scan_controller or ScanController(self)
         self.discovery_controller = discovery_controller or DiscoveryController(
             self
@@ -72,10 +91,12 @@ class MFirmaQtWindow(MSFluentWindow):
         self.settings_page = SettingsPage(self.config, self)
         self._shutdown_requested = False
         self._hide_notification_shown = False
+        self._restore_maximized = False
         self._shutdown_timer = QTimer(self)
         self._shutdown_timer.setInterval(100)
         self._shutdown_timer.timeout.connect(self._poll_shutdown)
         self._build_window()
+        self._restore_window_state()
         self.tray_controller = SystemTrayController(
             FluentIcon.CERTIFICATE.icon(),
             self,
@@ -94,11 +115,24 @@ class MFirmaQtWindow(MSFluentWindow):
         self._queue_navigation = self.addSubInterface(
             self.queue_page, FluentIcon.DOCUMENT, "Da firmare"
         )
-        self.addSubInterface(self.history_page, FluentIcon.HISTORY, "Cronologia")
-        self.addSubInterface(self.settings_page, FluentIcon.SETTING, "Impostazioni")
+        self._history_navigation = self.addSubInterface(
+            self.history_page, FluentIcon.HISTORY, "Cronologia"
+        )
+        self._settings_navigation = self.addSubInterface(
+            self.settings_page, FluentIcon.SETTING, "Impostazioni"
+        )
+        for button, name in (
+            (self._queue_navigation, "Da firmare"),
+            (self._history_navigation, "Cronologia"),
+            (self._settings_navigation, "Impostazioni"),
+        ):
+            button.setAccessibleName(name)
+            button.setToolTip(name)
         self.stackedWidget.addWidget(self.preview_page)
         self.stackedWidget.addWidget(self.progress_page)
         self.stackedWidget.addWidget(self.result_page)
+        self._escape_shortcut = QShortcut(QKeySequence.Cancel, self)
+        self._escape_shortcut.activated.connect(self._navigate_back)
 
     def _connect_services(self) -> None:
         self.queue_page.refreshRequested.connect(self.refresh_documents)
@@ -502,15 +536,24 @@ class MFirmaQtWindow(MSFluentWindow):
     def restore_from_tray(self) -> None:
         if self._shutdown_requested:
             return
-        self.showNormal()
+        self.show()
         self.raise_()
         self.activateWindow()
+
+    @Slot()
+    def _navigate_back(self) -> None:
+        current = self.stackedWidget.currentWidget()
+        if current is self.preview_page and not self.signing_controller.busy:
+            self.switchTo(self.queue_page)
+        elif current is self.result_page:
+            self._return_to_documents()
 
     @Slot()
     def request_exit(self) -> None:
         if self._shutdown_requested:
             return
         self._shutdown_requested = True
+        self._save_window_state()
         self.tray_controller.set_shutting_down()
         self.hide()
         self.signing_controller.request_cancel()
@@ -541,6 +584,7 @@ class MFirmaQtWindow(MSFluentWindow):
         self.shutdownReady.emit()
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        self._save_window_state()
         if self._shutdown_requested:
             if self._workers_busy():
                 event.ignore()
@@ -559,6 +603,47 @@ class MFirmaQtWindow(MSFluentWindow):
         if not self._hide_notification_shown:
             self._hide_notification_shown = True
             self.tray_controller.notify_hidden()
+
+    def _restore_window_state(self) -> None:
+        try:
+            state = self.window_state_repository.load()
+        except Exception:
+            LOGGER.warning("Stato finestra non leggibile; uso la geometria iniziale")
+            return
+        if state is None:
+            return
+        geometry = fit_window_geometry(
+            state,
+            (screen.availableGeometry() for screen in QGuiApplication.screens()),
+            minimum_size=self.minimumSize(),
+        )
+        self.setGeometry(geometry)
+        if state.maximized:
+            self._restore_maximized = True
+
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
+        super().showEvent(event)
+        if (
+            self._restore_maximized
+            and QGuiApplication.platformName().casefold() != "offscreen"
+        ):
+            self._restore_maximized = False
+            QTimer.singleShot(0, self.showMaximized)
+
+    def _save_window_state(self) -> None:
+        maximized = self.isMaximized() or self._restore_maximized
+        geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
+        state = WindowState(
+            x=geometry.x(),
+            y=geometry.y(),
+            width=geometry.width(),
+            height=geometry.height(),
+            maximized=maximized,
+        )
+        try:
+            self.window_state_repository.save(state)
+        except Exception:
+            LOGGER.warning("Stato finestra non salvato")
 
     def wait_for_workers(self, timeout_ms: int = 3000) -> bool:
         scan_done = self.scan_controller.wait_for_done(timeout_ms)

@@ -27,9 +27,11 @@ class ProgressPage(QWidget):
         layout.setSpacing(16)
         layout.addWidget(TitleLabel("Firma in corso", self))
         self.summary_label = SubtitleLabel("Preparazione…", self)
+        self.summary_label.setAccessibleName("Avanzamento firma")
         layout.addWidget(self.summary_label)
         self.progress_bar = QProgressBar(self)
         self.progress_bar.setObjectName("batchProgress")
+        self.progress_bar.setAccessibleName("Documenti completati")
         self.progress_bar.setRange(0, 1)
         layout.addWidget(self.progress_bar)
 
@@ -39,8 +41,10 @@ class ProgressPage(QWidget):
         current_layout.setContentsMargins(18, 16, 18, 16)
         current_layout.addWidget(BodyLabel("Documento corrente", current))
         self.file_label = SubtitleLabel("—", current)
+        self.file_label.setAccessibleName("Documento corrente")
         self.person_label = BodyLabel("", current)
         self.phase_label = BodyLabel("Fase: preparazione", current)
+        self.phase_label.setAccessibleName("Fase corrente")
         current_layout.addWidget(self.file_label)
         current_layout.addWidget(self.person_label)
         current_layout.addWidget(self.phase_label)
@@ -68,6 +72,7 @@ class ProgressPage(QWidget):
         actions = QHBoxLayout()
         actions.addStretch(1)
         self.cancel_button = PushButton("Annulla dopo il file corrente", self)
+        self.cancel_button.setAccessibleName("Annulla dopo il file corrente")
         actions.addWidget(self.cancel_button)
         layout.addLayout(actions)
         self.cancel_button.clicked.connect(self.cancelRequested)
@@ -78,6 +83,9 @@ class ProgressPage(QWidget):
         self.progress_bar.setRange(0, max(1, total))
         self.progress_bar.setValue(0)
         self.summary_label.setText(f"0 di {total} documenti completati")
+        self.progress_bar.setAccessibleDescription(
+            f"0 di {total} documenti completati"
+        )
         self.file_label.setText("Preparazione del batch")
         self.person_label.setText("")
         self.phase_label.setText("Fase: preparazione")
@@ -98,6 +106,7 @@ class ProgressPage(QWidget):
         self.summary_label.setText(
             f"{event.completed} di {event.total} documenti completati"
         )
+        self.progress_bar.setAccessibleDescription(self.summary_label.text())
         self._update_counts()
 
     def mark_cancel_requested(self, requested: bool) -> None:

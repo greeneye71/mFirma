@@ -428,6 +428,10 @@ class PreviewPage(QWidget):
         content = QHBoxLayout()
         self.canvas = PdfPreviewCanvas(self)
         self.canvas.setObjectName("pdfPreview")
+        self.canvas.setAccessibleName("Anteprima ultima pagina PDF")
+        self.canvas.setAccessibleDescription(
+            "La posizione può essere scelta anche con i quattro preset nella barra laterale"
+        )
         content.addWidget(self.canvas, 1)
         side = QFrame(self)
         side.setFrameShape(QFrame.Shape.StyledPanel)

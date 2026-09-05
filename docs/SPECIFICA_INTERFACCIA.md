@@ -640,6 +640,13 @@ worker Qt. Il tray nasconde e ripristina la finestra; `Esci` attende i worker e
 richiede l'annullamento della firma dopo il file corrente. La GUI Tkinter è
 stata rimossa.
 
+La geometria viene persistita atomicamente in coordinate logiche e vincolata ai
+monitor disponibili al ripristino. Sono implementati `Ctrl+F`, `Ctrl+A`, `F5`,
+`Spazio`, `Invio` ed `Esc`; controlli principali, navigazione e avanzamento
+espongono nomi o descrizioni accessibili. Tema e scaling hanno smoke test
+offscreen, mentre contrasto e screen reader restano da validare sulle
+postazioni Windows di collaudo.
+
 ## 20. Test UI minimi
 
 Test automatici con `pytest-qt` o strumento equivalente:

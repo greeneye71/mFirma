@@ -22,6 +22,9 @@
   byte dell'aspetto dopo aver eliminato deterministicamente il temporaneo; la
   pagina Qt non scrive né modifica il documento mostrato.
 - L'applicazione elimina i propri riferimenti al PIN appena terminato il batch.
+- Lo stato finestra è separato dalla configurazione e ammette soltanto versione,
+  coordinate logiche, dimensioni e indicatore di massimizzazione; la scrittura
+  è atomica e non include PIN, token o percorsi dei documenti.
 - Python non può garantire l'azzeramento di tutte le copie in memoria.
 - Se il middleware offre un dialogo protetto, l'utente può lasciare vuoto il
   campo dell'applicazione e usare il dialogo del produttore.

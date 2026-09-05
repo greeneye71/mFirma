@@ -101,6 +101,17 @@ def test_settings_page_rejects_invalid_output_suffix(qtbot):
         page.build_config()
 
 
+def test_settings_controls_have_accessible_names(qtbot):
+    page = SettingsPage(AppConfig())
+    qtbot.addWidget(page)
+
+    assert page.monitor_root.accessibleName() == "Cartella monitorata"
+    assert page.module_path.accessibleName() == "DLL PKCS11"
+    assert page.certificate_label.accessibleName() == "Etichetta certificato"
+    assert page.reason.accessibleName() == "Motivo firma opzionale"
+    assert page.save_button.accessibleName() == "Salva impostazioni"
+
+
 def test_module_candidate_sets_token_certificate_and_public_id(qtbot, workdir):
     page = SettingsPage(AppConfig())
     qtbot.addWidget(page)

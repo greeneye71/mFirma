@@ -199,6 +199,54 @@ class SettingsPage(QWidget):
         self.read_card_button.clicked.connect(self.readCardRequested)
         self.save_button.clicked.connect(self.saveRequested)
         self.appearance_variant.currentIndexChanged.connect(self._variant_changed)
+        for widget, name in (
+            (self.monitor_root, "Cartella monitorata"),
+            (root_browse, "Sfoglia cartella monitorata"),
+            (self.recursive, "Scansiona sottocartelle della persona"),
+            (self.stability_seconds, "Secondi di stabilità del file"),
+            (self.module_path, "DLL PKCS11"),
+            (self.discover_button, "Rileva middleware PKCS11"),
+            (module_browse, "Sfoglia DLL PKCS11"),
+            (self.token_label, "Etichetta token"),
+            (self.certificate_label, "Etichetta certificato"),
+            (self.read_card_button, "Leggi certificati dalla card"),
+            (self.key_label, "Etichetta chiave avanzata"),
+            (self.preset, "Posizione firma"),
+            (self.appearance_variant, "Aspetto firma"),
+            (self.margin_points, "Margine firma in punti"),
+            (self.width_points, "Larghezza firma in punti"),
+            (self.height_points, "Altezza firma in punti"),
+            (self.reason, "Motivo firma opzionale"),
+            (self.location, "Luogo firma opzionale"),
+            (self.output_suffix, "Suffisso file firmato"),
+            (self.save_button, "Salva impostazioni"),
+        ):
+            widget.setAccessibleName(name)
+
+        tab_order = (
+            self.monitor_root,
+            root_browse,
+            self.recursive,
+            self.stability_seconds,
+            self.module_path,
+            self.discover_button,
+            module_browse,
+            self.token_label,
+            self.certificate_label,
+            self.read_card_button,
+            self.key_label,
+            self.preset,
+            self.appearance_variant,
+            self.margin_points,
+            self.width_points,
+            self.height_points,
+            self.reason,
+            self.location,
+            self.output_suffix,
+            self.save_button,
+        )
+        for current, following in zip(tab_order, tab_order[1:]):
+            QWidget.setTabOrder(current, following)
 
     def load_config(self, config: AppConfig) -> None:
         self._loaded_config = deepcopy(config)

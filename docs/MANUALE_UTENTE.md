@@ -82,6 +82,20 @@ dell'icona nell'area di notifica di Windows. Per terminare davvero il programma
 scegliere `Esci`: se una firma è in corso, mFirma completa il documento corrente,
 annulla quelli non ancora iniziati, attende la chiusura dei worker e poi esce.
 
+La dimensione, la posizione normale e lo stato massimizzato della finestra
+vengono ricordati. Se il monitor usato in precedenza non è più collegato, mFirma
+riporta la finestra dentro un monitor disponibile.
+
+## Comandi da tastiera
+
+- `Ctrl+F`: porta il cursore nella ricerca;
+- `Ctrl+A`: seleziona o deseleziona tutti i risultati visibili quando la tabella
+  è attiva;
+- `F5`: aggiorna la cartella;
+- `Spazio`: seleziona o deseleziona le righe evidenziate;
+- `Invio`: prepara la firma dei documenti selezionati;
+- `Esc`: dall'anteprima o dal riepilogo torna all'elenco dei documenti.
+
 ## Configurazione iniziale
 
 Nella parte superiore della finestra compilare:

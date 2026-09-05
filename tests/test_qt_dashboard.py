@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QThreadPool
+from PySide6.QtCore import QThreadPool, Qt
 from qfluentwidgets import NavigationBarPushButton
 
 from mfirma.config import AppConfig, ConfigRepository
@@ -59,6 +59,36 @@ def test_queue_page_keeps_last_snapshot_when_network_is_unavailable(qtbot, workd
     assert page.folder_status.value.text() == "Non raggiungibile"
     assert page.warning_label.isVisible()
     assert "non è raggiungibile" in page.warning_label.text()
+
+
+def test_queue_keyboard_actions_and_accessible_names(qtbot, workdir):
+    page = QueuePage()
+    qtbot.addWidget(page)
+    document = _candidate(workdir / "Mario" / "tastiera.pdf", "Mario")
+    page.set_documents(ScanResult((document,), {"Mario": 1}))
+    page.resize(1000, 700)
+    page.show()
+    page.activateWindow()
+    qtbot.wait(10)
+    page.table.setFocus()
+    page.table.selectRow(0)
+    page.table.setCurrentIndex(page.proxy.index(0, 1))
+
+    qtbot.keyClick(page.table, Qt.Key.Key_Space)
+    assert page.model.selected_documents() == (document,)
+
+    prepared = []
+    page.prepareRequested.connect(prepared.append)
+    qtbot.keyClick(page.table, Qt.Key.Key_Return)
+    assert prepared == [(document,)]
+
+    qtbot.keyClick(page.table, Qt.Key.Key_F, Qt.KeyboardModifier.ControlModifier)
+    assert page.search.hasFocus()
+    assert page.table.accessibleName() == "Documenti da firmare"
+    assert page.prepare_button.accessibleName().startswith("Prepara la firma")
+
+    with qtbot.waitSignal(page.refreshRequested, timeout=1000):
+        qtbot.keyClick(page.search, Qt.Key.Key_F5)
 
 
 def test_scan_controller_runs_scanner_outside_gui_thread(qtbot, workdir):

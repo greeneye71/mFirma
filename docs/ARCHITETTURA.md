@@ -47,6 +47,7 @@ Cartella / scelta file
 | `ui/dialogs/` | Scelta di middleware/certificato e acquisizione effimera del PIN |
 | `ui/main_window.py` | `MSFluentWindow`, navigazione, tray e coordinamento Qt |
 | `ui/tray.py` | Menu tray, ripristino finestra e richiesta di uscita |
+| `ui/window_state.py` | Stato geometrico atomico e ripristino entro i monitor disponibili |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
@@ -174,6 +175,13 @@ chiusa. `Esci` avvia uno shutdown non bloccante: richiede al batch di annullarsi
 dopo il file corrente, attende scanner, discovery, anteprima e firma tramite un
 timer Qt, quindi nasconde il tray e termina l'event loop. La GUI Tkinter e il
 relativo adattatore sono stati rimossi.
+
+Dimensione, posizione normale e stato massimizzato sono conservati in un JSON
+separato accanto alla configurazione. Il repository accetta soltanto coordinate
+e versione note, scrive mediante sostituzione atomica e non contiene dati dei
+documenti o del dispositivo. Al ripristino Qt usa le geometrie disponibili in
+pixel logici e riporta interamente la finestra nel monitor con maggiore
+intersezione; uno stato completamente fuori schermo torna sul monitor primario.
 
 ## Confini intenzionali
 

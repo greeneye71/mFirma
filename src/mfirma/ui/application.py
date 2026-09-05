@@ -22,7 +22,12 @@ def configure_application(application: QApplication) -> None:
     fallback_id = QFontDatabase.addApplicationFont(str(fallback_path))
     fallback_families = QFontDatabase.applicationFontFamilies(fallback_id)
     installed = set(QFontDatabase.families())
-    family = "Segoe UI" if "Segoe UI" in installed else fallback_families[0]
+    if "Segoe UI" in installed:
+        family = "Segoe UI"
+    elif fallback_families:
+        family = fallback_families[0]
+    else:
+        family = application.font().family()
     application.setFont(QFont(family, 10))
     setTheme(Theme.AUTO)
     setThemeColor(QColor("#2667D8"), save=False)

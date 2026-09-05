@@ -194,6 +194,10 @@ def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir):
     assert (workdir / "documento_firmato.pdf").read_bytes().endswith(b"SIGNED")
     assert window.progress_page.progress_bar.value() == 1
     assert window.progress_page.succeeded_label.text() == "1"
+    assert (
+        window.progress_page.progress_bar.accessibleDescription()
+        == "1 di 1 documenti completati"
+    )
     assert window.wait_for_workers()
 
 

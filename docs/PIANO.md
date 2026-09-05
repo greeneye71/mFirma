@@ -57,8 +57,12 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
   **implementata e verificata con firma software di test**;
 - icona tray, chiusura ordinata, avvio Qt predefinito e rimozione della GUI
   Tkinter: **implementati e coperti da test offscreen**;
-- prossimo incremento: persistenza sicura di dimensione/posizione finestra,
-  rifinitura accessibilità e collaudo manuale di tema/scaling su Windows;
+- persistenza sicura di dimensione/posizione finestra e rifinitura
+  accessibilità/tastiera: **implementate e testate automaticamente**;
+- tema chiaro/scuro e scaling: **smoke test offscreen**, resta il collaudo
+  visivo sulle postazioni Windows reali;
+- prossimo incremento: selezione esplicita del token quando più dispositivi
+  sono collegati;
 - selezione del token quando più dispositivi sono collegati;
 - istanza singola, launcher e selezione multipla da Esplora file;
 - log rotanti e cronologia locale.

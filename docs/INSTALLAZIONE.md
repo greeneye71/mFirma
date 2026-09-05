@@ -143,6 +143,10 @@ La configurazione viene salvata per utente in:
 %LOCALAPPDATA%\mFirma\config.json
 ```
 
+La sola geometria della finestra viene salvata separatamente in
+`%LOCALAPPDATA%\mFirma\window-state.json`. Il file contiene coordinate logiche,
+dimensioni e stato massimizzato; non contiene PIN, certificati o percorsi PDF.
+
 Esempio:
 
 ```json

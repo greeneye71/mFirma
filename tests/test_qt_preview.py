@@ -282,4 +282,6 @@ def test_main_window_opens_preview_from_selected_documents(qtbot, workdir):
     assert window.stackedWidget.currentWidget() is window.preview_page
     assert window.preview_page.canvas.overlay.isVisible()
     assert window.preview_page.page_label.text() == "Pagina 2 di 2 · ultima pagina"
+    qtbot.keyClick(window, Qt.Key.Key_Escape)
+    assert window.stackedWidget.currentWidget() is window.queue_page
     assert window.wait_for_workers()

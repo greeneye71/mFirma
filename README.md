@@ -107,7 +107,7 @@ Implementato:
   scadenza dei certificati pubblici.
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
 - aspetto firma vettoriale completo (240 × 92 pt) o compatto (190 × 68 pt),
-  riutilizzabile dalla futura anteprima Qt e con cleanup deterministico.
+  condiviso con l'anteprima Qt e con cleanup deterministico.
 - prima dashboard PySide6/Fluent con navigazione, modello `QTableView`, ricerca
   differita, filtro per persona, selezione stabile e scansione in worker Qt.
 - pagina impostazioni Qt completa, persistenza atomica, discovery DLL in worker
@@ -121,6 +121,10 @@ Implementato:
   nella stessa anteprima Qt.
 - tray di sistema con ripristino della finestra e uscita asincrona ordinata;
 - GUI Qt come unico avvio e rimozione definitiva dell'interfaccia Tkinter.
+- dimensione, posizione e stato massimizzato ripristinati in coordinate logiche
+  dentro un monitor disponibile;
+- comandi tastiera principali e nomi accessibili per dashboard, impostazioni,
+  anteprima, avanzamento e risultati.
 
 Rimandato: menu di Esplora file, destinazione separata, pacchetto autonomo con
 installer Windows e provider CSP/CNG. Questi punti sono pianificati in

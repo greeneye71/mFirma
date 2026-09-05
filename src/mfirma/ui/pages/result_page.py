@@ -61,6 +61,7 @@ class ResultPage(QWidget):
 
         self.table = QTableView(self)
         self.table.setObjectName("batchResultTable")
+        self.table.setAccessibleName("Risultati della firma")
         self.table.setModel(self.proxy)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)

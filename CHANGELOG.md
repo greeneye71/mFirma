@@ -2,6 +2,12 @@
 
 ## Non rilasciato
 
+- aggiunto uno stato finestra separato, validato e atomico per ripristinare
+  dimensione, posizione e massimizzazione dentro i monitor disponibili;
+- completati i comandi tastiera della dashboard (`Ctrl+F`, `Ctrl+A`, `F5`,
+  `Spazio`, `Invio`, `Esc`) e i nomi accessibili dei controlli principali;
+- rimossi colori testuali fissi dalla dashboard per rispettare la palette dei
+  temi chiaro e scuro;
 - resa PySide6/Fluent l'unica GUI e impostato `python -m mfirma` come avvio
   predefinito; rimossa l'interfaccia Tkinter;
 - aggiunto il tray di sistema con azioni `Apri mFirma` ed `Esci`;

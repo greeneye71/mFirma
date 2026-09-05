@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import datetime
 from typing import Iterable
 
-from PySide6.QtCore import QTimer, Qt, Signal
+from PySide6.QtCore import QEvent, QTimer, Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -41,10 +41,11 @@ class _StatusPanel(QFrame):
         layout.setContentsMargins(14, 10, 14, 10)
         layout.setSpacing(3)
         caption = BodyLabel(title, self)
-        caption.setStyleSheet("color: #667085;")
         self.value = SubtitleLabel("—", self)
         self.detail = BodyLabel("", self)
         self.detail.setWordWrap(True)
+        self.setAccessibleName(title)
+        self.value.setAccessibleName(f"Stato {title.casefold()}")
         layout.addWidget(caption)
         layout.addWidget(self.value)
         layout.addWidget(self.detail)
@@ -85,7 +86,9 @@ class QueuePage(QWidget):
         header.addLayout(title_box)
         header.addStretch(1)
         self.add_button = PushButton("Aggiungi PDF", self)
+        self.add_button.setAccessibleName("Aggiungi documenti PDF")
         self.refresh_button = PushButton("Aggiorna", self)
+        self.refresh_button.setAccessibleName("Aggiorna cartella")
         header.addWidget(self.add_button)
         header.addWidget(self.refresh_button)
         root.addLayout(header)
@@ -109,6 +112,7 @@ class QueuePage(QWidget):
         people_box.addWidget(SubtitleLabel("Persone", self))
         self.people_list = QListWidget(self)
         self.people_list.setObjectName("peopleFilter")
+        self.people_list.setAccessibleName("Filtro per persona")
         self.people_list.setFixedWidth(190)
         people_box.addWidget(self.people_list, 1)
         content.addLayout(people_box)
@@ -122,6 +126,11 @@ class QueuePage(QWidget):
 
         self.table = QTableView(self)
         self.table.setObjectName("documentTable")
+        self.table.setAccessibleName("Documenti da firmare")
+        self.table.setAccessibleDescription(
+            "Usa Spazio per selezionare le righe evidenziate e Invio per preparare la firma"
+        )
+        self.table.installEventFilter(self)
         self.table.setModel(self.proxy)
         self.table.setSortingEnabled(True)
         self.table.sortByColumn(DocumentTableModel.PERSON_COLUMN, Qt.SortOrder.AscendingOrder)
@@ -142,7 +151,7 @@ class QueuePage(QWidget):
         self.empty_label = QLabel("Non ci sono PDF da firmare", self)
         self.empty_label.setObjectName("emptyState")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_label.setStyleSheet("color: #667085; padding: 12px;")
+        self.empty_label.setContentsMargins(12, 12, 12, 12)
         documents_box.addWidget(self.empty_label)
         content.addLayout(documents_box, 1)
         root.addLayout(content, 1)
@@ -155,10 +164,14 @@ class QueuePage(QWidget):
 
         selection_bar = QHBoxLayout()
         self.select_visible_button = PushButton("Seleziona risultati visibili", self)
+        self.select_visible_button.setAccessibleName(
+            "Seleziona o deseleziona tutti i risultati visibili"
+        )
         self.selection_label = BodyLabel("0 documenti selezionati", self)
         self.summary_label = BodyLabel("Ultima pagina · Basso a destra", self)
         self.prepare_button = PrimaryPushButton("Prepara la firma", self)
         self.prepare_button.setObjectName("prepareButton")
+        self.prepare_button.setAccessibleName("Prepara la firma dei documenti selezionati")
         self.prepare_button.setEnabled(False)
         selection_bar.addWidget(self.select_visible_button)
         selection_bar.addWidget(self.selection_label)
@@ -174,6 +187,15 @@ class QueuePage(QWidget):
         self._refresh_shortcut = QShortcut(QKeySequence("F5"), self)
         self._find_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
         self._select_all_shortcut = QShortcut(QKeySequence("Ctrl+A"), self.table)
+        self._select_all_shortcut.setContext(
+            Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
+        QWidget.setTabOrder(self.add_button, self.refresh_button)
+        QWidget.setTabOrder(self.refresh_button, self.people_list)
+        QWidget.setTabOrder(self.people_list, self.search)
+        QWidget.setTabOrder(self.search, self.table)
+        QWidget.setTabOrder(self.table, self.select_visible_button)
+        QWidget.setTabOrder(self.select_visible_button, self.prepare_button)
 
     def _connect_ui(self) -> None:
         self.refresh_button.clicked.connect(self.refreshRequested)
@@ -187,6 +209,17 @@ class QueuePage(QWidget):
         self._refresh_shortcut.activated.connect(self.refreshRequested)
         self._find_shortcut.activated.connect(self.search.setFocus)
         self._select_all_shortcut.activated.connect(self.select_all_visible)
+        self.table.doubleClicked.connect(lambda _index: self._prepare_from_table())
+
+    def eventFilter(self, watched, event):  # noqa: N802
+        if watched is self.table and event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Space:
+                self.toggle_highlighted_rows()
+                return True
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._prepare_from_table()
+                return True
+        return super().eventFilter(watched, event)
 
     def set_documents(self, result: ScanResult) -> None:
         self.model.set_documents(result.documents)
@@ -281,6 +314,30 @@ class QueuePage(QWidget):
             return
         select = not all(self.model.is_selected(row) for row in rows)
         self.model.set_selected_rows(rows, select)
+
+    def toggle_highlighted_rows(self) -> None:
+        selection = self.table.selectionModel()
+        proxy_rows = {index.row() for index in selection.selectedRows()}
+        if not proxy_rows and self.table.currentIndex().isValid():
+            proxy_rows.add(self.table.currentIndex().row())
+        source_rows = [
+            self.proxy.mapToSource(
+                self.proxy.index(row, DocumentTableModel.DOCUMENT_COLUMN)
+            ).row()
+            for row in sorted(proxy_rows)
+        ]
+        if not source_rows:
+            return
+        select = not all(self.model.is_selected(row) for row in source_rows)
+        self.model.set_selected_rows(source_rows, select)
+
+    def _prepare_from_table(self) -> None:
+        if not self.model.selected_documents():
+            current = self.table.currentIndex()
+            if current.isValid():
+                source = self.proxy.mapToSource(current)
+                self.model.set_selected_rows((source.row(),), True)
+        self._prepare()
 
     def _rebuild_people(self, documents: Iterable[DocumentCandidate]) -> None:
         active = self._active_person
