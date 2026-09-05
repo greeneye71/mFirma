@@ -1,12 +1,16 @@
+import math
+
 import pytest
 
-from mfirma.models import DisplayRect, PageGeometry
+from mfirma.models import DisplayRect, NormalizedDisplayRect, PageGeometry
 from mfirma.placement import (
     calculate_display_rect,
     calculate_placement,
     constrain_display_rect,
     display_page_size,
+    display_rect_from_normalized,
     display_rect_from_placement,
+    normalized_from_display_rect,
     placement_from_display_rect,
 )
 
@@ -98,3 +102,27 @@ def test_preset_display_rect_matches_pdf_placement(rotation):
     )
 
     assert display_rect_from_placement(geometry, placement) == rect
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_normalized_display_rect_roundtrips_for_all_rotations(rotation):
+    geometry = PageGeometry(10, 20, 610, 820, rotation)
+    normalized = NormalizedDisplayRect(0.1, 0.15, 0.4, 0.2)
+
+    rect = display_rect_from_normalized(geometry, normalized)
+
+    assert normalized_from_display_rect(geometry, rect) == normalized
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        (-0.1, 0, 0.2, 0.2),
+        (0, 0, 0, 0.2),
+        (0.8, 0, 0.3, 0.2),
+        (math.nan, 0, 0.2, 0.2),
+    ],
+)
+def test_normalized_display_rect_rejects_invalid_values(values):
+    with pytest.raises(ValueError):
+        NormalizedDisplayRect(*values)

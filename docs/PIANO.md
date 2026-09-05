@@ -51,9 +51,12 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
   **implementati e testati senza hardware**;
 - anteprima `QPdfDocument/QPdfView`, overlay condiviso, zoom, preset,
   trascinamento e ridimensionamento: **implementati e testati**;
-- prossimo incremento: dialogo PIN effimero, worker del `BatchOrchestrator`,
-  avanzamento reale, annullamento ed esito;
-- icona tray e avvio per utente;
+- dialogo PIN effimero, worker del `BatchOrchestrator`, avanzamento reale,
+  annullamento ed esito: **implementati e testati senza hardware**;
+- applicazione al PDF firmato del posizionamento scelto nell'anteprima:
+  **implementata e verificata con firma software di test**;
+- prossimo incremento: icona tray, chiusura ordinata, avvio Qt predefinito e
+  rimozione della GUI Tkinter quando il flusso risulta coperto;
 - selezione del token quando più dispositivi sono collegati;
 - istanza singola, launcher e selezione multipla da Esplora file;
 - log rotanti e cronologia locale.

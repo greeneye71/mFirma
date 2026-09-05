@@ -2,6 +2,16 @@
 
 ## Non rilasciato
 
+- collegato il flusso Qt reale a `BatchOrchestrator`, dalla conferma
+  dell'anteprima al riepilogo finale;
+- aggiunto un dialogo PIN effimero, senza persistenza, logging o trasporto nei
+  segnali di avanzamento;
+- aggiunte pagine Qt di avanzamento ed esito con fasi, file corrente, conteggi,
+  annullamento dopo il file corrente e messaggi utente sanificati;
+- il piano di posizionamento dell'anteprima viene ora applicato alla firma PDF
+  mediante coordinate PDF esplicite o rettangolo normalizzato condiviso;
+- aggiunti eventi `BatchProgress` e test Qt hardware-free per worker,
+  cancellazione, riepilogo e integrazione della finestra;
 - aggiunta la pagina Qt `Controlla e firma` basata su `QPdfDocument` e
   `QPdfView`, con ultima pagina reale, navigazione tra documenti e zoom;
 - l'aspetto vettoriale condiviso viene rasterizzato da Qt al 400% solo per lo

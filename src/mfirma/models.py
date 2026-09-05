@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Mapping
 
 
 class JobStatus(StrEnum):
@@ -13,6 +15,15 @@ class JobStatus(StrEnum):
     SKIPPED = "saltato"
     FAILED = "errore"
     CANCELLED = "annullato"
+
+
+class BatchPhase(StrEnum):
+    PREPARING = "preparazione"
+    CHECKING = "controllo"
+    SIGNING = "firma"
+    VERIFYING = "verifica"
+    PUBLISHING = "pubblicazione"
+    COMPLETED = "completato"
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +59,31 @@ class DisplayRect:
     height: float
 
 
+@dataclass(frozen=True, slots=True)
+class NormalizedDisplayRect:
+    x: float
+    y: float
+    width: float
+    height: float
+
+    def __post_init__(self) -> None:
+        values = (self.x, self.y, self.width, self.height)
+        if any(not math.isfinite(value) for value in values):
+            raise ValueError("Le coordinate normalizzate devono essere finite")
+        if any(value < 0 or value > 1 for value in values):
+            raise ValueError("Le coordinate normalizzate devono essere tra 0 e 1")
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError("Le dimensioni normalizzate devono essere positive")
+        if self.x + self.width > 1 or self.y + self.height > 1:
+            raise ValueError("Il riquadro normalizzato deve essere dentro la pagina")
+
+
+@dataclass(frozen=True, slots=True)
+class SignaturePositionPlan:
+    placements: Mapping[str, SignaturePlacement]
+    shared_rect: NormalizedDisplayRect | None = None
+
+
 @dataclass(slots=True)
 class SignJob:
     document: DocumentCandidate
@@ -55,6 +91,15 @@ class SignJob:
     status: JobStatus = JobStatus.PENDING
     error_code: str | None = None
     message: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class BatchProgress:
+    index: int
+    total: int
+    completed: int
+    phase: BatchPhase
+    job: SignJob
 
 
 @dataclass(frozen=True, slots=True)

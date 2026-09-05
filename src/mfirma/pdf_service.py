@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -12,8 +14,14 @@ from .appearance import (
 )
 from .config import SignatureConfig
 from .errors import PdfInvalidError, SignatureFailedError, SignedOutputInvalidError
-from .models import PageGeometry
-from .placement import calculate_placement
+from .models import NormalizedDisplayRect, PageGeometry, SignaturePlacement
+from .placement import (
+    calculate_placement,
+    constrain_display_rect,
+    display_rect_from_normalized,
+    display_rect_from_placement,
+    placement_from_display_rect,
+)
 
 
 def read_last_page_geometry(source: Path) -> tuple[PageGeometry, int, int]:
@@ -92,6 +100,9 @@ def sign_pades(
     *,
     appearance_renderer: ReportLabSignatureAppearanceRenderer | None = None,
     signing_time: datetime | None = None,
+    placement: SignaturePlacement | None = None,
+    normalized_rect: NormalizedDisplayRect | None = None,
+    phase_callback: Callable[[str], None] | None = None,
 ) -> None:
     """Aggiunge una firma PAdES B-B visibile all'ultima pagina."""
     from pyhanko import stamp
@@ -99,14 +110,47 @@ def sign_pades(
     from pyhanko.sign import fields, signers
 
     geometry, page_index, _ = read_last_page_geometry(source)
-    placement = calculate_placement(
-        geometry,
-        page_index=page_index,
-        preset=settings.preset,
-        margin=settings.margin_points,
-        width=settings.width_points,
-        height=settings.height_points,
-    )
+    if placement is not None and normalized_rect is not None:
+        raise ValueError("Indicare una sola modalità di posizionamento")
+    if placement is not None:
+        if placement.page_index != page_index:
+            raise ValueError("La posizione non appartiene all'ultima pagina")
+        display_rect = display_rect_from_placement(geometry, placement)
+        constrained = constrain_display_rect(geometry, display_rect)
+        if any(
+            not math.isclose(actual, expected, abs_tol=1e-6)
+            for actual, expected in zip(
+                (
+                    constrained.x,
+                    constrained.y,
+                    constrained.width,
+                    constrained.height,
+                ),
+                (
+                    display_rect.x,
+                    display_rect.y,
+                    display_rect.width,
+                    display_rect.height,
+                ),
+                strict=True,
+            )
+        ):
+            raise ValueError("La posizione della firma è fuori dalla pagina")
+    elif normalized_rect is not None:
+        placement = placement_from_display_rect(
+            geometry,
+            page_index=page_index,
+            rect=display_rect_from_normalized(geometry, normalized_rect),
+        )
+    else:
+        placement = calculate_placement(
+            geometry,
+            page_index=page_index,
+            preset=settings.preset,
+            margin=settings.margin_points,
+            width=settings.width_points,
+            height=settings.height_points,
+        )
     old_signature_count = embedded_signature_count(source)
     field_name = f"mFirma_{uuid.uuid4().hex[:12]}"
     signature_time = signing_time or datetime.now().astimezone()
@@ -159,4 +203,6 @@ def sign_pades(
     except Exception as exc:
         raise SignatureFailedError(f"Firma PDF non riuscita: {exc}") from exc
 
+    if phase_callback:
+        phase_callback("verifying")
     verify_new_signature(temporary_output, old_signature_count)

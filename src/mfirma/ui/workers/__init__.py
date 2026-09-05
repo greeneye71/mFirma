@@ -10,6 +10,7 @@ from .preview_worker import (
     preview_appearance_data,
 )
 from .scan_worker import ScanController
+from .signing_worker import SigningController
 
 __all__ = [
     "DiscoveryController",
@@ -19,5 +20,6 @@ __all__ = [
     "PreviewIdentity",
     "PreviewResult",
     "ScanController",
+    "SigningController",
     "preview_appearance_data",
 ]

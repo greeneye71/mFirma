@@ -11,8 +11,9 @@ from cryptography.x509.oid import NameOID
 from pyhanko.sign import signers
 from pypdf import PdfReader, PdfWriter
 
-from mfirma.config import SignatureConfig
 from mfirma.appearance import ReportLabSignatureAppearanceRenderer
+from mfirma.config import SignatureConfig
+from mfirma.models import SignaturePlacement
 from mfirma.pdf_service import embedded_signature_count, sign_pades
 
 
@@ -174,3 +175,31 @@ def test_pades_appearance_stays_valid_on_rotated_pages(workdir: Path, rotation: 
     assert embedded_signature_count(output) == 1
     assert len(PdfReader(output).pages) == 1
     assert not list(workdir.glob("mfirma-appearance-*.pdf"))
+
+
+def test_pades_uses_explicit_preview_placement_and_reports_verification(workdir: Path):
+    source = workdir / "explicit-source.pdf"
+    output = workdir / "explicit-signed.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=595, height=842)
+    with source.open("wb") as stream:
+        writer.write(stream)
+    placement = SignaturePlacement(0, 44.5, 61.25, 264.5, 145.25)
+    phases = []
+
+    sign_pades(
+        source,
+        output,
+        make_signer(workdir),
+        SignatureConfig(),
+        placement=placement,
+        phase_callback=phases.append,
+        appearance_renderer=ReportLabSignatureAppearanceRenderer(workdir),
+    )
+
+    widget = PdfReader(output).pages[0]["/Annots"][-1].get_object()
+    assert [float(value) for value in widget["/Rect"]] == pytest.approx(
+        [44.5, 61.25, 264.5, 145.25]
+    )
+    assert phases == ["verifying"]
+    assert embedded_signature_count(output) == 1

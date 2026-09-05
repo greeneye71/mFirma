@@ -247,6 +247,12 @@ def test_apply_position_to_all_uses_normalized_page_coordinates(qtbot, workdir):
     assert rect.x / second_size[0] == pytest.approx(40 / first_size[0])
     assert rect.y / second_size[1] == pytest.approx(50 / first_size[1])
 
+    plans = []
+    page.continueRequested.connect(plans.append)
+    page._continue()
+    assert plans[0].placements == {}
+    assert plans[0].shared_rect is not None
+
 
 def test_appearance_loaded_by_preview_is_the_renderer_pdf(workdir):
     document = _pdf(workdir / "source.pdf")

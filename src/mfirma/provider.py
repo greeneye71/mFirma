@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import Any, Iterator, Protocol
 
 from .config import Pkcs11Config, SignatureConfig
 from .errors import ProviderConfigurationError
+from .models import NormalizedDisplayRect, SignaturePlacement
 from .pdf_service import sign_pades
 
 
@@ -23,7 +25,15 @@ def _decode_pkcs11_id(value: str) -> bytes | None:
 
 
 class SigningSession(Protocol):
-    def sign_pdf(self, source: Path, temporary_output: Path) -> None: ...
+    def sign_pdf(
+        self,
+        source: Path,
+        temporary_output: Path,
+        *,
+        placement: SignaturePlacement | None = None,
+        normalized_rect: NormalizedDisplayRect | None = None,
+        phase_callback: Callable[[str], None] | None = None,
+    ) -> None: ...
 
 
 class SigningProvider(Protocol):
@@ -35,8 +45,24 @@ class _PadesSigningSession:
     signer: Any
     settings: SignatureConfig
 
-    def sign_pdf(self, source: Path, temporary_output: Path) -> None:
-        sign_pades(source, temporary_output, self.signer, self.settings)
+    def sign_pdf(
+        self,
+        source: Path,
+        temporary_output: Path,
+        *,
+        placement: SignaturePlacement | None = None,
+        normalized_rect: NormalizedDisplayRect | None = None,
+        phase_callback: Callable[[str], None] | None = None,
+    ) -> None:
+        sign_pades(
+            source,
+            temporary_output,
+            self.signer,
+            self.settings,
+            placement=placement,
+            normalized_rect=normalized_rect,
+            phase_callback=phase_callback,
+        )
 
 
 class Pkcs11SigningProvider:

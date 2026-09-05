@@ -10,9 +10,12 @@
   pubblico, non contiene la chiave privata e non consente di ricostruirla.
 - `Leggi card…` accede soltanto ai certificati pubblici e ai relativi metadati;
   non richiede il PIN e non legge né esporta la chiave privata.
-- Lo stato e i segnali Qt contengono documenti, configurazione non segreta e
-  risultati pubblici di scansione/discovery, mai il PIN; il flusso PIN non è
-  ancora collegato alla nuova UI.
+- Il dialogo Qt consegna il PIN direttamente al worker una sola volta e pulisce
+  il campo; stato globale, configurazione, cronologia e segnali Qt non lo
+  contengono.
+- Prima di associare un errore a un job, il batch rimuove dal messaggio ogni
+  occorrenza del PIN ricevuto. La pagina di esito mostra comunque soltanto
+  messaggi classificati e non le eccezioni tecniche.
 - Il worker discovery Qt conserva l'isolamento esistente: non carica la DLL nel
   processo grafico e non effettua autenticazione sul token.
 - Il worker di anteprima legge soltanto il PDF sorgente e produce in memoria i

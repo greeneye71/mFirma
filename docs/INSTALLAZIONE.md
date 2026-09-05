@@ -84,12 +84,12 @@ Per provare la dashboard Qt durante la migrazione:
 .venv\Scripts\python -m mfirma --qt-dashboard
 ```
 
-La pagina `Impostazioni` della modalità Qt è operativa e permette di salvare la
-configurazione, rilevare il middleware e leggere i certificati pubblici della
-card. Anche l'anteprima PDF e il posizionamento sono disponibili; PIN e firma
-restano temporaneamente nell'avvio standard.
+La modalità Qt permette di salvare la configurazione, rilevare il middleware,
+leggere i certificati pubblici, preparare l'anteprima e completare la firma in
+un worker con avanzamento e riepilogo. Il PIN è effimero e non viene salvato.
 
-La firma resta disponibile nell'avvio standard senza tale opzione.
+L'avvio standard continua temporaneamente a usare la GUI Tkinter fino
+all'incremento tray/chiusura ordinata.
 
 ## Individuare la DLL e le etichette
 

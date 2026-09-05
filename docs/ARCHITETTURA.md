@@ -44,9 +44,9 @@ GUI Tkinter ───────> BatchOrchestrator
 | `pdf_service.py` | Campo visibile, PAdES B-B e verifica della nuova firma |
 | `appearance.py` | Modello e rendering vettoriale dell'aspetto, indipendente dalla GUI |
 | `ui/models/` | Modelli Qt per documenti, middleware e certificati |
-| `ui/workers/` | Scanner, discovery e preparazione anteprima fuori dal thread grafico |
-| `ui/pages/` | Dashboard, impostazioni, anteprima PDF e cronologia non simulata |
-| `ui/dialogs/` | Scelta confermata di middleware e certificato pubblico |
+| `ui/workers/` | Scanner, discovery, anteprima e batch di firma fuori dal thread grafico |
+| `ui/pages/` | Dashboard, impostazioni, anteprima, avanzamento, esito e cronologia non simulata |
+| `ui/dialogs/` | Scelta di middleware/certificato e acquisizione effimera del PIN |
 | `ui/main_window.py` | `MSFluentWindow`, navigazione e coordinamento Qt |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
@@ -109,8 +109,10 @@ Prima della firma dimensione e data vengono ricontrollate. Gli stati terminali
 sono `riuscito`, `saltato`, `errore` e `annullato`.
 
 Le firme sono seriali perché non si presume che smart card e middleware siano
-thread-safe. Il lavoro viene eseguito fuori dal thread Tkinter e la GUI riceve
-gli aggiornamenti tramite una coda.
+thread-safe. Il lavoro viene eseguito fuori dal thread grafico. Il percorso Qt
+riceve eventi `BatchProgress` tipizzati per controllo, firma, verifica,
+pubblicazione e completamento; l'annullamento viene controllato prima di
+iniziare ogni file.
 
 ## Firma PDF
 
@@ -136,8 +138,7 @@ controllo crittografico. Non esegue una valutazione normativa, EUTL, OCSP o CRL.
 
 Lo spike con pyHanko 0.37.0 ha confermato dimensioni esatte, testo estraibile,
 font incorporato, resa vettoriale al 400%, firma e verifica. Non sono state
-usate API private. Lo stesso renderer è il contratto che dovrà consumare la
-futura anteprima Qt.
+usate API private. Lo stesso renderer alimenta sia l'anteprima Qt sia la firma.
 
 ## Migrazione Qt in corso
 
@@ -163,9 +164,17 @@ piccolo PDF vettoriale per lo schermo. L'overlay converte i movimenti in
 `DisplayRect` espressi in punti e poi in `SignaturePlacement`; nessun pixel UI
 entra nel piano di firma.
 
-La modalità Qt non esegue ancora firma o PIN. Per questo non è il punto
-d'ingresso predefinito e non duplica il flusso completo Tkinter. Il passaggio
-definitivo avverrà soltanto quando tali casi d'uso saranno coperti.
+`PinDialog` consegna il PIN una sola volta al `SigningController`, lo cancella
+subito dal widget e non lo inserisce in configurazione, segnali o stato globale.
+Il controller esegue `BatchOrchestrator` in `QThreadPool`; il piano proveniente
+dall'anteprima contiene coordinate PDF per singolo documento oppure un
+rettangolo normalizzato condiviso. `ProgressPage` mostra gli eventi reali e
+`ResultPage` espone solo messaggi utente classificati, non le eccezioni tecniche.
+
+La modalità Qt copre quindi il percorso scansione–firma–esito, ma non è ancora
+il punto d'ingresso predefinito. Il passaggio definitivo è accoppiato al
+prossimo incremento su tray, uscita ordinata e rimozione dell'adattatore
+Tkinter.
 
 ## Confini intenzionali
 

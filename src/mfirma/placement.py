@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .models import DisplayRect, PageGeometry, SignaturePlacement
+from .models import (
+    DisplayRect,
+    NormalizedDisplayRect,
+    PageGeometry,
+    SignaturePlacement,
+)
 
 
 PRESETS = {"top_left", "top_right", "bottom_left", "bottom_right"}
@@ -60,6 +65,31 @@ def constrain_display_rect(
     x = min(max(rect.x, 0.0), display_width - width)
     y = min(max(rect.y, 0.0), display_height - height)
     return DisplayRect(x, y, width, height)
+
+
+def display_rect_from_normalized(
+    geometry: PageGeometry, rect: NormalizedDisplayRect
+) -> DisplayRect:
+    width, height = display_page_size(geometry)
+    return DisplayRect(
+        rect.x * width,
+        rect.y * height,
+        rect.width * width,
+        rect.height * height,
+    )
+
+
+def normalized_from_display_rect(
+    geometry: PageGeometry, rect: DisplayRect
+) -> NormalizedDisplayRect:
+    constrained = constrain_display_rect(geometry, rect)
+    width, height = display_page_size(geometry)
+    return NormalizedDisplayRect(
+        constrained.x / width,
+        constrained.y / height,
+        constrained.width / width,
+        constrained.height / height,
+    )
 
 
 def placement_from_display_rect(

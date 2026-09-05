@@ -32,12 +32,21 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
-from ...models import DisplayRect, DocumentCandidate, PageGeometry, SignaturePlacement
+from ...models import (
+    DisplayRect,
+    DocumentCandidate,
+    NormalizedDisplayRect,
+    PageGeometry,
+    SignaturePlacement,
+    SignaturePositionPlan,
+)
 from ...placement import (
     calculate_display_rect,
     constrain_display_rect,
+    display_rect_from_normalized,
     display_page_size,
     display_rect_from_placement,
+    normalized_from_display_rect,
     placement_from_display_rect,
 )
 from ..state import normalized_path
@@ -375,7 +384,7 @@ class PreviewPage(QWidget):
         self._current_index = 0
         self._current_result: PreviewResult | None = None
         self._placements: dict[str, SignaturePlacement] = {}
-        self._shared_normalized_rect: tuple[float, float, float, float] | None = None
+        self._shared_normalized_rect: NormalizedDisplayRect | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -495,21 +504,16 @@ class PreviewPage(QWidget):
             f"Pagina {result.page_index + 1} di {result.page_count} · ultima pagina"
         )
         key = normalized_path(result.document.source)
-        if key in self._placements:
-            rect = display_rect_from_placement(
-                result.geometry, self._placements[key]
-            )
-        elif self.apply_all.isChecked() and self._shared_normalized_rect:
-            width, height = display_page_size(result.geometry)
-            x, y, rect_width, rect_height = self._shared_normalized_rect
+        if self.apply_all.isChecked() and self._shared_normalized_rect:
             rect = constrain_display_rect(
                 result.geometry,
-                DisplayRect(
-                    x * width,
-                    y * height,
-                    rect_width * width,
-                    rect_height * height,
+                display_rect_from_normalized(
+                    result.geometry, self._shared_normalized_rect
                 ),
+            )
+        elif key in self._placements:
+            rect = display_rect_from_placement(
+                result.geometry, self._placements[key]
             )
         else:
             rect = calculate_display_rect(
@@ -599,12 +603,9 @@ class PreviewPage(QWidget):
     def _display_rect_changed(self, rect: DisplayRect) -> None:
         if not self.apply_all.isChecked() or self._current_result is None:
             return
-        width, height = display_page_size(self._current_result.geometry)
-        self._shared_normalized_rect = (
-            rect.x / width,
-            rect.y / height,
-            rect.width / width,
-            rect.height / height,
+        self._shared_normalized_rect = normalized_from_display_rect(
+            self._current_result.geometry,
+            rect,
         )
 
     def _apply_all_changed(self, checked: bool) -> None:
@@ -614,4 +615,11 @@ class PreviewPage(QWidget):
             self._display_rect_changed(self.canvas.display_rect)
 
     def _continue(self) -> None:
-        self.continueRequested.emit(self.placements)
+        self.continueRequested.emit(
+            SignaturePositionPlan(
+                placements={}
+                if self._shared_normalized_rect is not None
+                else self.placements,
+                shared_rect=self._shared_normalized_rect,
+            )
+        )

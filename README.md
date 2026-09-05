@@ -48,16 +48,19 @@ python -m venv .venv
 .venv\Scripts\python -m mfirma
 ```
 
-La migrazione grafica è iniziata con una dashboard PySide6/Fluent realmente
-collegata allo scanner. Durante lo sviluppo si può provarla con:
+La migrazione grafica PySide6/Fluent dispone ora di un flusso verticale
+completo, dalla scansione al riepilogo della firma. Durante lo sviluppo si può
+provarla con:
 
 ```powershell
 .venv\Scripts\python -m mfirma --qt-dashboard
 ```
 
-Senza l'opzione viene ancora aperta la GUI Tkinter completa, finché PIN e firma
-non saranno migrati senza regressioni. Nella modalità Qt sono già operative le
-impostazioni, la discovery del dispositivo e la pagina di anteprima PDF.
+Senza l'opzione viene ancora aperta la GUI Tkinter. Nella modalità Qt sono
+operative impostazioni, discovery del dispositivo, anteprima PDF, PIN
+effimero, firma in worker, annullamento dopo il file corrente e riepilogo reale.
+Il passaggio della GUI Qt ad avvio predefinito è rimandato al completamento del
+tray e della chiusura ordinata dei worker.
 
 Nella finestra:
 
@@ -114,10 +117,14 @@ Implementato:
 - pagina `Controlla e firma` con `QPdfView`, vero PDF sorgente, aspetto prodotto
   dal renderer condiviso, zoom, quattro preset e riquadro trascinabile e
   ridimensionabile in punti PDF.
+- dialogo PIN Qt effimero, worker del batch, fasi di avanzamento reali,
+  annullamento controllato e riepilogo finale senza dettagli sensibili;
+- applicazione al PDF firmato delle coordinate in punti o normalizzate scelte
+  nella stessa anteprima Qt.
 
-Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
-destinazione separata, pacchetto autonomo con installer Windows e provider
-CSP/CNG. Questi punti sono pianificati in [docs/PIANO.md](docs/PIANO.md).
+Rimandato: tray, menu di Esplora file, destinazione separata, pacchetto
+autonomo con installer Windows e provider CSP/CNG. Questi punti sono
+pianificati in [docs/PIANO.md](docs/PIANO.md).
 
 ## Test
 

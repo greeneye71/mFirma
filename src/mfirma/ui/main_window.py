@@ -3,17 +3,23 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Slot
+from PySide6.QtCore import QTimer, QUrl, Slot
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qfluentwidgets import FluentIcon, MSFluentWindow
 
+from ..batch import BatchOrchestrator
 from ..config import AppConfig, ConfigRepository
 from ..discovery import ModuleCandidate
+from ..models import SignaturePositionPlan
+from ..provider import Pkcs11SigningProvider, SigningProvider
 from ..scanner import ScanResult, candidates_from_paths
-from .dialogs import CertificateSelectionDialog, ModuleSelectionDialog
+from .dialogs import CertificateSelectionDialog, ModuleSelectionDialog, PinDialog
 from .pages.history_page import HistoryPage
 from .pages.preview_page import PreviewPage
+from .pages.progress_page import ProgressPage
 from .pages.queue_page import QueuePage
+from .pages.result_page import ResultPage
 from .pages.settings_page import SettingsPage
 from .state import DeviceState, ScanState
 from .workers import (
@@ -24,6 +30,7 @@ from .workers import (
     PreviewIdentity,
     PreviewResult,
     ScanController,
+    SigningController,
 )
 
 
@@ -38,6 +45,7 @@ class MFirmaQtWindow(MSFluentWindow):
         scan_controller: ScanController | None = None,
         discovery_controller: DiscoveryController | None = None,
         preview_controller: PreviewController | None = None,
+        signing_controller: SigningController | None = None,
         auto_scan: bool = True,
     ):
         super().__init__()
@@ -51,8 +59,11 @@ class MFirmaQtWindow(MSFluentWindow):
             self
         )
         self.preview_controller = preview_controller or PreviewController(self)
+        self.signing_controller = signing_controller or SigningController(self)
         self.queue_page = QueuePage(self)
         self.preview_page = PreviewPage(self)
+        self.progress_page = ProgressPage(self)
+        self.result_page = ResultPage(self)
         self.history_page = HistoryPage(self)
         self.settings_page = SettingsPage(self.config, self)
         self._build_window()
@@ -71,6 +82,8 @@ class MFirmaQtWindow(MSFluentWindow):
         self.addSubInterface(self.history_page, FluentIcon.HISTORY, "Cronologia")
         self.addSubInterface(self.settings_page, FluentIcon.SETTING, "Impostazioni")
         self.stackedWidget.addWidget(self.preview_page)
+        self.stackedWidget.addWidget(self.progress_page)
+        self.stackedWidget.addWidget(self.result_page)
 
     def _connect_services(self) -> None:
         self.queue_page.refreshRequested.connect(self.refresh_documents)
@@ -80,9 +93,20 @@ class MFirmaQtWindow(MSFluentWindow):
             lambda: self.switchTo(self.queue_page)
         )
         self.preview_page.documentRequested.connect(self._prepare_preview)
-        self.preview_page.continueRequested.connect(
-            self._show_signing_migration_boundary
+        self.preview_page.continueRequested.connect(self.request_signing)
+        self.progress_page.cancelRequested.connect(
+            self.signing_controller.request_cancel
         )
+        self.signing_controller.progressChanged.connect(
+            self.progress_page.update_progress
+        )
+        self.signing_controller.cancellationChanged.connect(
+            self.progress_page.mark_cancel_requested
+        )
+        self.signing_controller.batchFinished.connect(self._batch_finished)
+        self.signing_controller.batchFailed.connect(self._batch_failed)
+        self.result_page.backRequested.connect(self._return_to_documents)
+        self.result_page.openFolderRequested.connect(self._open_output_folder)
         self.settings_page.saveRequested.connect(self.save_settings)
         self.settings_page.browseRootRequested.connect(self.choose_monitor_root)
         self.settings_page.browseModuleRequested.connect(self.choose_module)
@@ -371,18 +395,92 @@ class MFirmaQtWindow(MSFluentWindow):
         )
 
     @Slot(object)
-    def _show_signing_migration_boundary(self, _placements) -> None:
-        QMessageBox.information(
-            self,
-            "Firma pronta",
-            f"Hai preparato {len(self.preview_page.documents)} documenti.\n\n"
-            "PIN, avanzamento e firma saranno collegati alla nuova interfaccia "
-            "nel prossimo incremento. Per firmare ora usa l’interfaccia stabile "
-            "avviando mFirma senza --qt-dashboard.",
+    def request_signing(self, position_plan: SignaturePositionPlan) -> None:
+        documents = self.preview_page.documents
+        if not documents or self.signing_controller.busy:
+            return
+        provider = Pkcs11SigningProvider(
+            self.config.pkcs11,
+            self.config.signature,
         )
+        try:
+            provider.validate()
+        except Exception as exc:
+            LOGGER.warning("Configurazione di firma non pronta: %s", exc)
+            QMessageBox.warning(
+                self,
+                "Dispositivo di firma",
+                "Completa DLL e certificato nelle Impostazioni prima di firmare.",
+            )
+            return
+
+        dialog = PinDialog(len(documents), self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        pin = dialog.take_pin()
+        try:
+            self.start_batch(provider, position_plan, pin=pin)
+        finally:
+            pin = None
+
+    def start_batch(
+        self,
+        provider: SigningProvider,
+        position_plan: SignaturePositionPlan,
+        *,
+        pin: str | None,
+    ) -> bool:
+        """Avvia un batch Qt; usato anche dai test senza hardware."""
+
+        documents = self.preview_page.documents
+        if not documents:
+            return False
+        orchestrator = BatchOrchestrator(provider, self.config.output.suffix)
+        self.progress_page.start(len(documents))
+        self.switchTo(self.progress_page)
+        started = self.signing_controller.start(
+            orchestrator,
+            documents,
+            pin=pin,
+            position_plan=position_plan,
+        )
+        if not started:
+            self.switchTo(self.preview_page)
+            QMessageBox.information(
+                self,
+                "Firma in corso",
+                "Attendi il completamento del batch già avviato.",
+            )
+        return started
+
+    @Slot(object)
+    def _batch_finished(self, jobs) -> None:
+        self.result_page.set_jobs(jobs)
+        self.switchTo(self.result_page)
+
+    @Slot(str)
+    def _batch_failed(self, technical_message: str) -> None:
+        LOGGER.error("Worker di firma interrotto: %s", technical_message)
+        self.switchTo(self.preview_page)
+        QMessageBox.warning(
+            self,
+            "Firma non completata",
+            "Il processo di firma si è interrotto. Nessun file sorgente è stato modificato.",
+        )
+
+    @Slot()
+    def _return_to_documents(self) -> None:
+        self.switchTo(self.queue_page)
+        if self.config.monitor.root:
+            self.refresh_documents()
+
+    @Slot(object)
+    def _open_output_folder(self, folder: Path) -> None:
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
     def wait_for_workers(self, timeout_ms: int = 3000) -> bool:
         scan_done = self.scan_controller.wait_for_done(timeout_ms)
         discovery_done = self.discovery_controller.wait_for_done(timeout_ms)
         preview_done = self.preview_controller.wait_for_done(timeout_ms)
-        return scan_done and discovery_done and preview_done
+        signing_done = self.signing_controller.wait_for_done(timeout_ms)
+        return scan_done and discovery_done and preview_done and signing_done
