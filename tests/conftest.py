@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import os
 import shutil
 import uuid
 from pathlib import Path
 
 import pytest
+
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 @pytest.fixture
@@ -16,4 +20,3 @@ def workdir() -> Path:
         yield path
     finally:
         shutil.rmtree(path, ignore_errors=True)
-

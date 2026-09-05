@@ -1,8 +1,8 @@
 # Architettura
 
-> Questo documento descrive l'architettura implementata nella versione 0.1.0,
-> inclusa la GUI Tkinter. La migrazione approvata verso PySide6 e Fluent è
-> definita in [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
+> La GUI Tkinter resta il flusso completo predefinito. La prima parte della
+> migrazione PySide6/Fluent è disponibile con `--qt-dashboard` ed è definita in
+> [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
 
 ## Obiettivi
 
@@ -43,6 +43,10 @@ GUI Tkinter ───────> BatchOrchestrator
 | `provider.py` | Apertura e chiusura della sessione PKCS#11 |
 | `pdf_service.py` | Campo visibile, PAdES B-B e verifica della nuova firma |
 | `appearance.py` | Modello e rendering vettoriale dell'aspetto, indipendente dalla GUI |
+| `ui/models/` | Modello tabellare e proxy Qt, senza logica di scansione o firma |
+| `ui/workers/` | Scanner fuori dal thread grafico e segnali strutturati |
+| `ui/pages/` | Dashboard e pagine di migrazione per cronologia e impostazioni |
+| `ui/main_window.py` | `MSFluentWindow`, navigazione e coordinamento Qt |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
@@ -132,7 +136,20 @@ controllo crittografico. Non esegue una valutazione normativa, EUTL, OCSP o CRL.
 Lo spike con pyHanko 0.37.0 ha confermato dimensioni esatte, testo estraibile,
 font incorporato, resa vettoriale al 400%, firma e verifica. Non sono state
 usate API private. Lo stesso renderer è il contratto che dovrà consumare la
-futura anteprima Qt; la migrazione della GUI non è inclusa in questo incremento.
+futura anteprima Qt.
+
+## Migrazione Qt in corso
+
+`python -m mfirma --qt-dashboard` apre una `MSFluentWindow` con le sezioni
+`Da firmare`, `Cronologia` e `Impostazioni`. La dashboard usa
+`QAbstractTableModel` e `QSortFilterProxyModel`; selezione, ricerca e filtro non
+dipendono dagli indici visibili. `ScanController` consegna il lavoro a un
+`QThreadPool` e riporta alla UI un `ScanResult` immutabile. In caso di rete
+assente l'ultima fotografia non viene cancellata.
+
+La modalità Qt non esegue ancora firma, PIN, anteprima o discovery. Per questo
+non è il punto d'ingresso predefinito e non duplica il flusso completo Tkinter.
+Il passaggio definitivo avverrà soltanto quando tali casi d'uso saranno coperti.
 
 ## Confini intenzionali
 

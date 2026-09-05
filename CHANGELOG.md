@@ -2,6 +2,11 @@
 
 ## Non rilasciato
 
+- aggiunta la prima dashboard PySide6/Fluent, avviabile con `--qt-dashboard`,
+  con navigazione, `QTableView`, filtri e scanner asincrono;
+- selezione dei documenti conservata per percorso normalizzato, ricerca con
+  debounce di 200 ms e mantenimento dell'ultima lista quando la rete è assente;
+- bloccate e verificate su Windows le dipendenze Qt e `pytest-qt`;
 - sostituito il riquadro testuale minimo con un aspetto firma vettoriale
   completo/compatto, font incorporato e informazioni neutrali verificabili;
 - aggiunti modello `SignatureAppearanceData`, numero progressivo della firma,

@@ -1,6 +1,6 @@
 # Specifica di implementazione dell'interfaccia mFirma
 
-> Stato: approvata come direzione grafica e funzionale
+> Stato: approvata; passi 1 e 2 avviati con dashboard Qt eseguibile e testata
 >
 > Destinatario: Codex o altro agente incaricato dell'implementazione
 >
@@ -617,6 +617,17 @@ modello da un thread secondario.
 
 Ogni passo deve lasciare l'app avviabile e i test esistenti verdi. Non unire
 migrazione grafica e modifiche al formato di firma nello stesso passo.
+
+### Stato implementativo al 05/09/2026
+
+Sono disponibili `MSFluentWindow`, tema di sistema, colore `#2667D8`, Segoe UI,
+navigazione, dashboard, `QTableView`, modello astratto, proxy di filtro,
+selezione per percorso normalizzato, ricerca differita e scansione tramite
+`QThreadPool`. L'avvio di sviluppo è `python -m mfirma --qt-dashboard`.
+
+Restano intenzionalmente sulla GUI stabile impostazioni modificabili, discovery,
+anteprima, PIN, firma, avanzamento, esito e tray. La GUI Qt diventerà predefinita
+soltanto dopo la copertura di questo flusso.
 
 ## 20. Test UI minimi
 

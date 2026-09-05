@@ -48,6 +48,16 @@ python -m venv .venv
 .venv\Scripts\python -m mfirma
 ```
 
+La migrazione grafica è iniziata con una dashboard PySide6/Fluent realmente
+collegata allo scanner. Durante lo sviluppo si può provarla con:
+
+```powershell
+.venv\Scripts\python -m mfirma --qt-dashboard
+```
+
+Senza l'opzione viene ancora aperta la GUI Tkinter completa, finché anteprima,
+firma e impostazioni non saranno migrate senza regressioni.
+
 Nella finestra:
 
 1. scegli la cartella monitorata;
@@ -96,6 +106,8 @@ Implementato:
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
 - aspetto firma vettoriale completo (240 × 92 pt) o compatto (190 × 68 pt),
   riutilizzabile dalla futura anteprima Qt e con cleanup deterministico.
+- prima dashboard PySide6/Fluent con navigazione, modello `QTableView`, ricerca
+  differita, filtro per persona, selezione stabile e scansione in worker Qt.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
 destinazione separata, pacchetto autonomo con installer Windows e provider

@@ -2,6 +2,9 @@
 
 ## Funzioni non ancora implementate
 
+La dashboard Qt è disponibile in modalità di migrazione, ma il flusso operativo
+completo continua a usare Tkinter.
+
 - icona nella system tray;
 - avvio automatico con Windows;
 - istanza singola e inoltro da una seconda invocazione;
@@ -13,7 +16,9 @@
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza
   Python; è disponibile soltanto lo script locale `installa_mFirma.cmd`;
 - provider Windows CSP/CNG;
-- TSA e profili PAdES B-T, B-LT e B-LTA.
+- TSA e profili PAdES B-T, B-LT e B-LTA;
+- nella dashboard Qt: impostazioni modificabili, discovery, anteprima, PIN,
+  firma, avanzamento, esito e tray;
 
 ## Limiti operativi
 

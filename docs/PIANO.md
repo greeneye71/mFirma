@@ -45,8 +45,10 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 
 ### 3. Esperienza Windows
 
-- migrazione verticale della GUI da Tkinter a PySide6/Fluent, iniziando da
-  infrastruttura, modello tabellare e dashboard;
+- infrastruttura PySide6/Fluent, modello tabellare, dashboard filtrabile e
+  scanner Qt: **implementati in modalità di migrazione `--qt-dashboard`**;
+- prossimo incremento: impostazioni/discovery Qt e pagina di anteprima basata
+  su `QPdfDocument` e sul renderer dell'aspetto già disponibile;
 - icona tray e avvio per utente;
 - anteprima della pagina con rettangolo spostabile;
 - selezione del token quando più dispositivi sono collegati;

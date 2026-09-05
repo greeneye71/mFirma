@@ -7,7 +7,7 @@ set "MFIRMA_PYTHONW=.venv\Scripts\pythonw.exe"
 
 rem Al primo avvio crea l'ambiente; lo ripara anche se manca un modulo.
 if not exist "%MFIRMA_PYTHON%" goto install
-"%MFIRMA_PYTHON%" -c "import mfirma, pyhanko, pypdf, reportlab" >nul 2>&1
+"%MFIRMA_PYTHON%" -c "import mfirma, pyhanko, pypdf, reportlab, PySide6, qfluentwidgets" >nul 2>&1
 if errorlevel 1 goto install
 goto start_app
 

@@ -43,7 +43,7 @@ echo [3/3] Installazione di mFirma...
 ".venv\Scripts\python.exe" -m pip install --disable-pip-version-check -e . --no-deps
 if errorlevel 1 goto install_error
 
-".venv\Scripts\python.exe" -c "import mfirma, pyhanko, pypdf, reportlab"
+".venv\Scripts\python.exe" -c "import mfirma, pyhanko, pypdf, reportlab, PySide6, qfluentwidgets"
 if errorlevel 1 goto install_error
 
 echo.

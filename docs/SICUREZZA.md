@@ -10,6 +10,8 @@
   pubblico, non contiene la chiave privata e non consente di ricostruirla.
 - `Leggi card…` accede soltanto ai certificati pubblici e ai relativi metadati;
   non richiede il PIN e non legge né esporta la chiave privata.
+- Lo stato e i segnali della dashboard Qt contengono documenti e risultati di
+  scansione, mai il PIN; il flusso PIN non è ancora collegato alla nuova UI.
 - L'applicazione elimina i propri riferimenti al PIN appena terminato il batch.
 - Python non può garantire l'azzeramento di tutte le copie in memoria.
 - Se il middleware offre un dialogo protetto, l'utente può lasciare vuoto il

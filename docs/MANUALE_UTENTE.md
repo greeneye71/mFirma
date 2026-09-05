@@ -54,6 +54,11 @@ l'applicazione dal terminale, dalla radice del progetto eseguire:
 .venv\Scripts\python -m mfirma
 ```
 
+È disponibile anche una dashboard Qt in migrazione tramite
+`.venv\Scripts\python -m mfirma --qt-dashboard`. Consente scansione, ricerca,
+filtro per persona e selezione, ma non avvia ancora la firma: per l'uso operativo
+continuare ad avviare mFirma senza questa opzione.
+
 ## Configurazione iniziale
 
 Nella parte superiore della finestra compilare:

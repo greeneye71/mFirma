@@ -55,6 +55,10 @@ collaudo hardware il file dovrà essere rigenerato e nuovamente verificato.
 ReportLab 5.0.1 è incluso per generare l'aspetto visibile vettoriale della firma
 e incorpora il font nel PDF. Non è richiesta un'installazione separata del font.
 
+PySide6 6.11.2, PySide6-Fluent-Widgets 1.11.3 e le dipendenze Qt sono bloccate
+nel lockfile dopo uno smoke test su Windows con `MSFluentWindow` e `QPdfDocument`.
+L'installazione iniziale richiede più spazio e tempo per i moduli Qt.
+
 ## Aggiornamento e riparazione
 
 Dopo `git pull`, eseguire nuovamente `installa_mFirma.cmd` se sono cambiati
@@ -73,6 +77,14 @@ verificato il funzionamento, la vecchia cartella può essere eliminata.
 
 Oppure fare doppio clic su `avvia_mFirma.cmd`, che crea o ripara l'ambiente
 quando Python o uno dei moduli richiesti non sono disponibili.
+
+Per provare la dashboard Qt durante la migrazione:
+
+```powershell
+.venv\Scripts\python -m mfirma --qt-dashboard
+```
+
+La firma resta disponibile nell'avvio standard senza tale opzione.
 
 ## Individuare la DLL e le etichette
 
@@ -142,8 +154,9 @@ Esempio:
   "signature": {
     "preset": "bottom_right",
     "margin_points": 24.0,
-    "width_points": 180.0,
-    "height_points": 60.0,
+    "width_points": 240.0,
+    "height_points": 92.0,
+    "appearance_variant": "complete",
     "reason": "",
     "location": ""
   },

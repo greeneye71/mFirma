@@ -28,6 +28,8 @@ La suite copre:
   testo estraibile, font incorporato, Unicode, timezone, campi opzionali e
   cleanup dei temporanei;
 - integrazione dell'aspetto su firma, co-firma e pagine ruotate 0/90/180/270.
+- smoke test Qt offscreen, modello tabellare con 1.000 documenti, filtro per
+  persona/testo, selezione stabile, debounce, stati rete e scanner su thread Qt.
 
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.
