@@ -28,7 +28,7 @@ def configure_application(application: QApplication) -> None:
     setThemeColor(QColor("#2667D8"), save=False)
 
 
-def run_qt_dashboard(
+def run_application(
     arguments: Sequence[str] | None = None,
     repository: ConfigRepository | None = None,
 ) -> int:
@@ -42,7 +42,12 @@ def run_qt_dashboard(
     application = existing or QApplication(qt_arguments)
     configure_application(application)
     window = MFirmaQtWindow(repository)
+    application.setQuitOnLastWindowClosed(not window.tray_controller.available)
+    window.shutdownReady.connect(application.quit)
     window.show()
     if owns_application:
         return application.exec()
     return 0
+
+
+run_qt_dashboard = run_application

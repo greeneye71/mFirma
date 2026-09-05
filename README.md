@@ -48,19 +48,17 @@ python -m venv .venv
 .venv\Scripts\python -m mfirma
 ```
 
-La migrazione grafica PySide6/Fluent dispone ora di un flusso verticale
-completo, dalla scansione al riepilogo della firma. Durante lo sviluppo si può
-provarla con:
+`python -m mfirma` avvia l'interfaccia PySide6/Fluent completa, dalla scansione
+al riepilogo della firma:
 
 ```powershell
-.venv\Scripts\python -m mfirma --qt-dashboard
+.venv\Scripts\python -m mfirma
 ```
 
-Senza l'opzione viene ancora aperta la GUI Tkinter. Nella modalità Qt sono
-operative impostazioni, discovery del dispositivo, anteprima PDF, PIN
-effimero, firma in worker, annullamento dopo il file corrente e riepilogo reale.
-Il passaggio della GUI Qt ad avvio predefinito è rimandato al completamento del
-tray e della chiusura ordinata dei worker.
+L'opzione storica `--qt-dashboard` resta accettata per compatibilità ma non è
+più necessaria. La GUI Tkinter è stata rimossa. Chiudere la finestra la nasconde
+nell'area di notifica; `Esci` dal menu dell'icona attende ordinatamente i worker
+e, se necessario, annulla il batch dopo il file corrente.
 
 Nella finestra:
 
@@ -68,8 +66,8 @@ Nella finestra:
 2. indica la DLL PKCS#11 e premi `Leggi card…` per vedere e scegliere il
    certificato di firma;
 3. aggiorna l'elenco o aggiungi PDF manualmente;
-4. seleziona più righe e premi `Firma selezionati`;
-5. conferma il riepilogo e inserisci il PIN. Lascia il PIN vuoto soltanto se il
+4. seleziona più righe e premi `Prepara la firma`;
+5. controlla l'anteprima e inserisci il PIN. Lascia il PIN vuoto soltanto se il
    middleware usa il proprio dialogo protetto.
 
 Il PIN non viene salvato. I file originali non vengono modificati e un output
@@ -121,10 +119,12 @@ Implementato:
   annullamento controllato e riepilogo finale senza dettagli sensibili;
 - applicazione al PDF firmato delle coordinate in punti o normalizzate scelte
   nella stessa anteprima Qt.
+- tray di sistema con ripristino della finestra e uscita asincrona ordinata;
+- GUI Qt come unico avvio e rimozione definitiva dell'interfaccia Tkinter.
 
-Rimandato: tray, menu di Esplora file, destinazione separata, pacchetto
-autonomo con installer Windows e provider CSP/CNG. Questi punti sono
-pianificati in [docs/PIANO.md](docs/PIANO.md).
+Rimandato: menu di Esplora file, destinazione separata, pacchetto autonomo con
+installer Windows e provider CSP/CNG. Questi punti sono pianificati in
+[docs/PIANO.md](docs/PIANO.md).
 
 ## Test
 

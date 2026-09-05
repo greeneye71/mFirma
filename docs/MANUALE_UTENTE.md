@@ -54,13 +54,12 @@ l'applicazione dal terminale, dalla radice del progetto eseguire:
 .venv\Scripts\python -m mfirma
 ```
 
-È disponibile anche una dashboard Qt in migrazione tramite
-`.venv\Scripts\python -m mfirma --qt-dashboard`. Consente scansione, ricerca,
+Il comando apre direttamente la GUI Qt, che consente scansione, ricerca,
 filtro, impostazioni, rilevamento middleware, lettura card, anteprima PDF e
-firma completa. Resta un avvio di migrazione finché non saranno completati tray
-e chiusura ordinata.
+firma completa. L'opzione storica `--qt-dashboard` è ancora accettata ma non è
+necessaria.
 
-Nella dashboard Qt selezionare uno o più documenti e premere `Prepara la firma`.
+Nella finestra selezionare uno o più documenti e premere `Prepara la firma`.
 La pagina `Controlla e firma` apre l'ultima pagina del primo PDF. È possibile
 cambiare documento, adattare lo zoom, scegliere uno dei quattro preset e
 trascinare o ridimensionare il riquadro restando all'interno della pagina. La
@@ -74,6 +73,14 @@ non inserire il PIN in mFirma. La pagina successiva mostra file corrente, fase,
 conteggi e avanzamento. `Annulla dopo il file corrente` non interrompe
 bruscamente il middleware. Al termine il riepilogo distingue riusciti, errori,
 saltati e annullati senza mostrare dettagli tecnici potenzialmente sensibili.
+
+## Area di notifica e uscita
+
+Il pulsante di chiusura della finestra nasconde mFirma senza interrompere
+scansioni o firme. Per riaprire la finestra usare `Apri mFirma` dal menu
+dell'icona nell'area di notifica di Windows. Per terminare davvero il programma
+scegliere `Esci`: se una firma è in corso, mFirma completa il documento corrente,
+annulla quelli non ancora iniziati, attende la chiusura dei worker e poi esce.
 
 ## Configurazione iniziale
 
@@ -89,9 +96,8 @@ Nella parte superiore della finestra compilare:
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
 | Aspetto | `Completo` (240 × 92 pt) oppure `Compatto` (190 × 68 pt) |
 
-Nella GUI Qt premere `Salva impostazioni`; nella GUI stabile la configurazione
-viene salvata quando si avvia una firma. Il PIN non fa parte della
-configurazione.
+Premere `Salva impostazioni` per rendere effettiva la configurazione. Il PIN non
+fa parte della configurazione.
 
 L'aspetto completo mostra i dati pubblici essenziali del firmatario, la data e
 l'ora del computer con il fuso, il profilo PAdES B-B, SHA-256 e il numero della

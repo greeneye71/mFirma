@@ -195,3 +195,67 @@ def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir):
     assert window.progress_page.progress_bar.value() == 1
     assert window.progress_page.succeeded_label.text() == "1"
     assert window.wait_for_workers()
+
+
+def test_close_hides_window_and_tray_exit_finishes_when_idle(qtbot, workdir):
+    repository = ConfigRepository(workdir / "config.json")
+    repository.save(AppConfig())
+    window = MFirmaQtWindow(
+        repository,
+        tray_available=True,
+        auto_scan=False,
+    )
+    qtbot.addWidget(window)
+    window.show()
+
+    window.close()
+    assert not window.isVisible()
+    assert not window._shutdown_requested
+
+    window.tray_controller.open_action.trigger()
+    assert window.isVisible()
+
+    with qtbot.waitSignal(window.shutdownReady, timeout=1000):
+        window.tray_controller.exit_action.trigger()
+    assert window._shutdown_requested
+    assert not window.tray_controller.tray_icon.isVisible()
+
+
+def test_tray_exit_waits_for_current_signature_then_cancels_rest(qtbot, workdir):
+    first = _candidate(workdir / "tray-primo.pdf")
+    second = _candidate(workdir / "tray-secondo.pdf")
+    started = threading.Event()
+    release = threading.Event()
+    provider = ControlledProvider(ControlledSession(started=started, release=release))
+    repository = ConfigRepository(workdir / "config.json")
+    repository.save(AppConfig())
+    window = MFirmaQtWindow(
+        repository,
+        signing_controller=SigningController(thread_pool=QThreadPool()),
+        tray_available=True,
+        auto_scan=False,
+    )
+    qtbot.addWidget(window)
+    window.preview_page.set_documents((first, second), "Certificato simulato")
+    finished_jobs = []
+    window.signing_controller.batchFinished.connect(finished_jobs.extend)
+
+    assert window.start_batch(
+        provider,
+        SignaturePositionPlan(placements={}),
+        pin="pin-test-tray",
+    )
+    qtbot.waitUntil(started.is_set, timeout=2000)
+    window.tray_controller.exit_action.trigger()
+
+    assert window._shutdown_requested
+    assert window.signing_controller.busy
+    assert window.signing_controller._cancel_event.is_set()
+    with qtbot.waitSignal(window.shutdownReady, timeout=5000):
+        release.set()
+
+    assert [job.status for job in finished_jobs] == [
+        JobStatus.SUCCEEDED,
+        JobStatus.CANCELLED,
+    ]
+    assert window.wait_for_workers()

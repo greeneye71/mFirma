@@ -126,15 +126,15 @@ def test_fluent_window_smoke_and_real_scan(qtbot, workdir):
     assert window.wait_for_workers()
 
 
-def test_module_entry_point_routes_the_qt_dashboard(monkeypatch):
+def test_module_entry_point_routes_qt_by_default(monkeypatch):
     import mfirma.__main__ as entry_point
     import mfirma.ui.application as qt_application
 
     calls: list[list[str]] = []
-    monkeypatch.setattr(sys, "argv", ["mfirma", "--qt-dashboard"])
+    monkeypatch.setattr(sys, "argv", ["mfirma"])
     monkeypatch.setattr(
         qt_application,
-        "run_qt_dashboard",
+        "run_application",
         lambda arguments: calls.append(list(arguments)) or 0,
     )
 
@@ -142,4 +142,4 @@ def test_module_entry_point_routes_the_qt_dashboard(monkeypatch):
         entry_point.main()
 
     assert exit_info.value.code == 0
-    assert calls == [["mfirma", "--qt-dashboard"]]
+    assert calls == [["mfirma"]]

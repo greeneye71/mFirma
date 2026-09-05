@@ -2,6 +2,11 @@
 
 ## Non rilasciato
 
+- resa PySide6/Fluent l'unica GUI e impostato `python -m mfirma` come avvio
+  predefinito; rimossa l'interfaccia Tkinter;
+- aggiunto il tray di sistema con azioni `Apri mFirma` ed `Esci`;
+- la chiusura della finestra ora la nasconde, mentre l'uscita aspetta in modo
+  asincrono tutti i worker e annulla la firma dopo il file corrente;
 - collegato il flusso Qt reale a `BatchOrchestrator`, dalla conferma
   dell'anteprima al riepilogo finale;
 - aggiunto un dialogo PIN effimero, senza persistenza, logging o trasporto nei

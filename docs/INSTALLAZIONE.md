@@ -78,18 +78,18 @@ verificato il funzionamento, la vecchia cartella può essere eliminata.
 Oppure fare doppio clic su `avvia_mFirma.cmd`, che crea o ripara l'ambiente
 quando Python o uno dei moduli richiesti non sono disponibili.
 
-Per provare la dashboard Qt durante la migrazione:
+L'avvio normale usa la GUI Qt:
 
 ```powershell
-.venv\Scripts\python -m mfirma --qt-dashboard
+.venv\Scripts\python -m mfirma
 ```
 
-La modalità Qt permette di salvare la configurazione, rilevare il middleware,
+La GUI permette di salvare la configurazione, rilevare il middleware,
 leggere i certificati pubblici, preparare l'anteprima e completare la firma in
 un worker con avanzamento e riepilogo. Il PIN è effimero e non viene salvato.
 
-L'avvio standard continua temporaneamente a usare la GUI Tkinter fino
-all'incremento tray/chiusura ordinata.
+La GUI Tkinter non fa più parte del progetto. L'opzione `--qt-dashboard` resta
+temporaneamente riconosciuta soltanto per non interrompere vecchi collegamenti.
 
 ## Individuare la DLL e le etichette
 

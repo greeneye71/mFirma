@@ -623,7 +623,7 @@ migrazione grafica e modifiche al formato di firma nello stesso passo.
 Sono disponibili `MSFluentWindow`, tema di sistema, colore `#2667D8`, Segoe UI,
 navigazione, dashboard, `QTableView`, modello astratto, proxy di filtro,
 selezione per percorso normalizzato, ricerca differita e scansione tramite
-`QThreadPool`. L'avvio di sviluppo è `python -m mfirma --qt-dashboard`.
+`QThreadPool`. L'avvio predefinito è `python -m mfirma`.
 
 La pagina impostazioni Qt salva tutti i valori correnti tramite
 `ConfigRepository`. Discovery e lettura card usano un worker Qt che richiama il
@@ -635,9 +635,10 @@ mostra il PDF prodotto dal renderer condiviso, gestisce zoom, preset,
 trascinamento e ridimensionamento. Le coordinate persistenti del flusso sono
 punti PDF convertiti da `placement.py`, inclusi CropBox e rotazioni.
 
-Restano intenzionalmente sulla GUI stabile PIN, firma, avanzamento, esito e
-tray. La GUI Qt diventerà predefinita soltanto dopo la copertura di questo
-flusso.
+PIN, firma, avanzamento ed esito sono collegati al `BatchOrchestrator` tramite
+worker Qt. Il tray nasconde e ripristina la finestra; `Esci` attende i worker e
+richiede l'annullamento della firma dopo il file corrente. La GUI Tkinter è
+stata rimossa.
 
 ## 20. Test UI minimi
 
@@ -673,7 +674,7 @@ Test manuali Windows 11:
 
 La migrazione è completa quando:
 
-- il flusso attualmente disponibile in Tkinter funziona nella GUI Qt;
+- il flusso precedentemente disponibile in Tkinter funziona nella GUI Qt;
 - la configurazione tecnica non occupa la dashboard;
 - selezione, ricerca e filtro restano fluidi con 1.000 PDF;
 - l'anteprima corrisponde alla posizione finale entro la tolleranza definita nei

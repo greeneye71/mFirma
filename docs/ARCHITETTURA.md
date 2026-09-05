@@ -1,8 +1,7 @@
 # Architettura
 
-> La GUI Tkinter resta il flusso completo predefinito. La prima parte della
-> migrazione PySide6/Fluent è disponibile con `--qt-dashboard` ed è definita in
-> [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
+> PySide6/Fluent è l'unica interfaccia e viene avviata da `python -m mfirma`.
+> La specifica è in [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
 
 ## Obiettivi
 
@@ -19,7 +18,7 @@ Cartella / scelta file
      Scanner ──────> DocumentCandidate
                           │
                           v
-GUI Tkinter ───────> BatchOrchestrator
+     GUI Qt ───────> BatchOrchestrator
                           │  una sessione, job seriali
                ┌──────────┴──────────┐
                v                     v
@@ -36,7 +35,6 @@ GUI Tkinter ───────> BatchOrchestrator
 
 | Modulo | Responsabilità |
 |---|---|
-| `app.py` | Finestra, configurazione visibile, selezione, worker e avanzamento |
 | `scanner.py` | Ricerca PDF, associazione alla persona, esclusioni e stabilità |
 | `models.py` | Oggetti di dominio e stati dei job |
 | `batch.py` | Deduplicazione, firma seriale, annullamento ed esiti indipendenti |
@@ -47,7 +45,8 @@ GUI Tkinter ───────> BatchOrchestrator
 | `ui/workers/` | Scanner, discovery, anteprima e batch di firma fuori dal thread grafico |
 | `ui/pages/` | Dashboard, impostazioni, anteprima, avanzamento, esito e cronologia non simulata |
 | `ui/dialogs/` | Scelta di middleware/certificato e acquisizione effimera del PIN |
-| `ui/main_window.py` | `MSFluentWindow`, navigazione e coordinamento Qt |
+| `ui/main_window.py` | `MSFluentWindow`, navigazione, tray e coordinamento Qt |
+| `ui/tray.py` | Menu tray, ripristino finestra e richiesta di uscita |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
@@ -75,9 +74,8 @@ l'intestazione PE e accetta soltanto DLL x64.
 
 Ogni candidata viene passata a `mfirma.probe` in un processo separato, senza
 PIN e con timeout. Questo confina blocchi o crash del middleware fuori dal
-processo Tkinter. Il risultato ritorna alla GUI tramite la stessa coda eventi
-usata dagli altri worker; il percorso viene salvato soltanto dopo la scelta
-dell'utente.
+processo grafico. Il risultato ritorna alla GUI tramite segnali Qt; il percorso
+viene salvato soltanto dopo la scelta dell'utente.
 
 Lo stesso probe isolato viene eseguito su una DLL scelta manualmente. Le
 etichette pubbliche vengono restituite alla GUI: una singola etichetta viene
@@ -140,9 +138,9 @@ Lo spike con pyHanko 0.37.0 ha confermato dimensioni esatte, testo estraibile,
 font incorporato, resa vettoriale al 400%, firma e verifica. Non sono state
 usate API private. Lo stesso renderer alimenta sia l'anteprima Qt sia la firma.
 
-## Migrazione Qt in corso
+## Interfaccia Qt
 
-`python -m mfirma --qt-dashboard` apre una `MSFluentWindow` con le sezioni
+`python -m mfirma` apre una `MSFluentWindow` con le sezioni
 `Da firmare`, `Cronologia` e `Impostazioni`. La dashboard usa
 `QAbstractTableModel` e `QSortFilterProxyModel`; selezione, ricerca e filtro non
 dipendono dagli indici visibili. `ScanController` consegna il lavoro a un
@@ -171,14 +169,15 @@ dall'anteprima contiene coordinate PDF per singolo documento oppure un
 rettangolo normalizzato condiviso. `ProgressPage` mostra gli eventi reali e
 `ResultPage` espone solo messaggi utente classificati, non le eccezioni tecniche.
 
-La modalità Qt copre quindi il percorso scansione–firma–esito, ma non è ancora
-il punto d'ingresso predefinito. Il passaggio definitivo è accoppiato al
-prossimo incremento su tray, uscita ordinata e rimozione dell'adattatore
-Tkinter.
+`SystemTrayController` mantiene attiva l'applicazione quando la finestra viene
+chiusa. `Esci` avvia uno shutdown non bloccante: richiede al batch di annullarsi
+dopo il file corrente, attende scanner, discovery, anteprima e firma tramite un
+timer Qt, quindi nasconde il tray e termina l'event loop. La GUI Tkinter e il
+relativo adattatore sono stati rimossi.
 
 ## Confini intenzionali
 
-- Tkinter non conosce pyHanko o python-pkcs11.
+- La GUI Qt non conosce le API interne di pyHanko o python-pkcs11.
 - Lo scanner non firma e non scrive output.
 - Il provider non decide nomi o posizioni.
 - Il servizio PDF non salva né acquisisce il PIN.

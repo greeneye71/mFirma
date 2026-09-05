@@ -8,10 +8,10 @@ scelta consente sia il batch sia firme successive sullo stesso PDF, preservate
 da aggiornamenti incrementali. Non include TSA e non pretende di determinare lo
 status qualificato del certificato.
 
-La GUI 0.1.0 usa Tkinter. Per l'evoluzione Windows è stata approvata la
-migrazione a **PySide6 con PySide6-Fluent-Widgets**, necessaria per tray,
-anteprima PDF interattiva, navigazione Fluent e tabelle model/view. La specifica
-operativa è in [SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
+La GUI iniziale 0.1.0 usava Tkinter. È stata sostituita da **PySide6 con
+PySide6-Fluent-Widgets** per tray, anteprima PDF interattiva, navigazione Fluent
+e tabelle model/view. La specifica operativa è in
+[SPECIFICA_INTERFACCIA.md](SPECIFICA_INTERFACCIA.md).
 
 ## Fasi
 
@@ -46,7 +46,7 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 ### 3. Esperienza Windows
 
 - infrastruttura PySide6/Fluent, modello tabellare, dashboard filtrabile e
-  scanner Qt: **implementati in modalità di migrazione `--qt-dashboard`**;
+  scanner Qt: **implementati nell'avvio predefinito**;
 - impostazioni, persistenza, discovery Qt e scelta del certificato pubblico:
   **implementati e testati senza hardware**;
 - anteprima `QPdfDocument/QPdfView`, overlay condiviso, zoom, preset,
@@ -55,8 +55,10 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
   annullamento ed esito: **implementati e testati senza hardware**;
 - applicazione al PDF firmato del posizionamento scelto nell'anteprima:
   **implementata e verificata con firma software di test**;
-- prossimo incremento: icona tray, chiusura ordinata, avvio Qt predefinito e
-  rimozione della GUI Tkinter quando il flusso risulta coperto;
+- icona tray, chiusura ordinata, avvio Qt predefinito e rimozione della GUI
+  Tkinter: **implementati e coperti da test offscreen**;
+- prossimo incremento: persistenza sicura di dimensione/posizione finestra,
+  rifinitura accessibilità e collaudo manuale di tema/scaling su Windows;
 - selezione del token quando più dispositivi sono collegati;
 - istanza singola, launcher e selezione multipla da Esplora file;
 - log rotanti e cronologia locale.

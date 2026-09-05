@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QUrl, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QCloseEvent, QDesktopServices
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qfluentwidgets import FluentIcon, MSFluentWindow
 
@@ -22,6 +22,7 @@ from .pages.queue_page import QueuePage
 from .pages.result_page import ResultPage
 from .pages.settings_page import SettingsPage
 from .state import DeviceState, ScanState
+from .tray import SystemTrayController
 from .workers import (
     DiscoveryController,
     DiscoveryOperation,
@@ -38,6 +39,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MFirmaQtWindow(MSFluentWindow):
+    shutdownReady = Signal()
+
     def __init__(
         self,
         repository: ConfigRepository | None = None,
@@ -46,6 +49,7 @@ class MFirmaQtWindow(MSFluentWindow):
         discovery_controller: DiscoveryController | None = None,
         preview_controller: PreviewController | None = None,
         signing_controller: SigningController | None = None,
+        tray_available: bool | None = None,
         auto_scan: bool = True,
     ):
         super().__init__()
@@ -66,7 +70,18 @@ class MFirmaQtWindow(MSFluentWindow):
         self.result_page = ResultPage(self)
         self.history_page = HistoryPage(self)
         self.settings_page = SettingsPage(self.config, self)
+        self._shutdown_requested = False
+        self._hide_notification_shown = False
+        self._shutdown_timer = QTimer(self)
+        self._shutdown_timer.setInterval(100)
+        self._shutdown_timer.timeout.connect(self._poll_shutdown)
         self._build_window()
+        self.tray_controller = SystemTrayController(
+            FluentIcon.CERTIFICATE.icon(),
+            self,
+            available_override=tray_available,
+        )
+        self.setWindowIcon(FluentIcon.CERTIFICATE.icon())
         self._connect_services()
         self._update_operational_status()
         if auto_scan and self.config.monitor.root:
@@ -105,6 +120,11 @@ class MFirmaQtWindow(MSFluentWindow):
         )
         self.signing_controller.batchFinished.connect(self._batch_finished)
         self.signing_controller.batchFailed.connect(self._batch_failed)
+        self.signing_controller.busyChanged.connect(
+            self.tray_controller.set_busy
+        )
+        self.tray_controller.showRequested.connect(self.restore_from_tray)
+        self.tray_controller.exitRequested.connect(self.request_exit)
         self.result_page.backRequested.connect(self._return_to_documents)
         self.result_page.openFolderRequested.connect(self._open_output_folder)
         self.settings_page.saveRequested.connect(self.save_settings)
@@ -149,7 +169,7 @@ class MFirmaQtWindow(MSFluentWindow):
         root = self.config.monitor.root.strip()
         if not root:
             self.queue_page.folder_status.set_status(
-                "Non configurata", "Configura la cartella nella GUI stabile"
+                "Non configurata", "Configura la cartella nelle Impostazioni"
             )
             return
         self.scan_controller.start(
@@ -477,6 +497,68 @@ class MFirmaQtWindow(MSFluentWindow):
     @Slot(object)
     def _open_output_folder(self, folder: Path) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
+    @Slot()
+    def restore_from_tray(self) -> None:
+        if self._shutdown_requested:
+            return
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    @Slot()
+    def request_exit(self) -> None:
+        if self._shutdown_requested:
+            return
+        self._shutdown_requested = True
+        self.tray_controller.set_shutting_down()
+        self.hide()
+        self.signing_controller.request_cancel()
+        if self._workers_busy():
+            self._shutdown_timer.start()
+        else:
+            self._finish_shutdown()
+
+    def _workers_busy(self) -> bool:
+        return any(
+            controller.busy
+            for controller in (
+                self.scan_controller,
+                self.discovery_controller,
+                self.preview_controller,
+                self.signing_controller,
+            )
+        )
+
+    @Slot()
+    def _poll_shutdown(self) -> None:
+        if not self._workers_busy():
+            self._finish_shutdown()
+
+    def _finish_shutdown(self) -> None:
+        self._shutdown_timer.stop()
+        self.tray_controller.hide()
+        self.shutdownReady.emit()
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        if self._shutdown_requested:
+            if self._workers_busy():
+                event.ignore()
+            else:
+                event.accept()
+            return
+        if not self.tray_controller.available:
+            if self._workers_busy():
+                event.ignore()
+                self.request_exit()
+            else:
+                event.accept()
+            return
+        event.ignore()
+        self.hide()
+        if not self._hide_notification_shown:
+            self._hide_notification_shown = True
+            self.tray_controller.notify_hidden()
 
     def wait_for_workers(self, timeout_ms: int = 3000) -> bool:
         scan_done = self.scan_controller.wait_for_done(timeout_ms)
