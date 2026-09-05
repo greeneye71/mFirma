@@ -11,8 +11,13 @@ from mfirma.discovery import (
     CertificateCandidate,
     DiscoveryResult,
     ModuleCandidate,
+    TokenCandidate,
 )
-from mfirma.ui.dialogs import CertificateSelectionDialog, ModuleSelectionDialog
+from mfirma.ui.dialogs import (
+    CertificateSelectionDialog,
+    ModuleSelectionDialog,
+    TokenSelectionDialog,
+)
 from mfirma.ui.main_window import MFirmaQtWindow
 from mfirma.ui.pages.settings_page import SettingsPage
 from mfirma.ui.workers import (
@@ -43,6 +48,15 @@ def _module(workdir, *, multiple: bool = False) -> ModuleCandidate:
     )
     if not multiple:
         certificates = certificates[1:]
+    token = TokenCandidate(
+        slot_id=7,
+        label="Token Firma",
+        serial="SER-1",
+        serial_hex="5345522d31",
+        manufacturer="Produttore Prova",
+        model="Carta Prova",
+        certificates=certificates,
+    )
     return ModuleCandidate(
         path=workdir / "vendor-pkcs11.dll",
         architecture="x64",
@@ -52,6 +66,7 @@ def _module(workdir, *, multiple: bool = False) -> ModuleCandidate:
         document_signing_labels=("Firma documenti",),
         certificate_ids=tuple((item.label, item.id_hex) for item in certificates),
         certificates=certificates,
+        tokens=(token,),
     )
 
 
@@ -80,6 +95,7 @@ def test_settings_page_roundtrip_all_fields_and_variant_defaults(qtbot):
     assert updated.monitor.recursive_within_person is False
     assert updated.monitor.stability_seconds == 12
     assert updated.pkcs11.token_label == "Token A"
+    assert updated.pkcs11.token_serial == ""
     assert updated.pkcs11.key_label == "Chiave manuale"
     assert updated.signature.preset == "top_left"
     assert updated.signature.appearance_variant == "compact"
@@ -122,6 +138,7 @@ def test_module_candidate_sets_token_certificate_and_public_id(qtbot, workdir):
 
     assert config.pkcs11.module_path == str(candidate.path)
     assert config.pkcs11.token_label == "Token Firma"
+    assert config.pkcs11.token_serial == "5345522d31"
     assert config.pkcs11.certificate_label == "Firma documenti"
     assert config.pkcs11.certificate_id == "445333"
 
@@ -134,14 +151,65 @@ def test_discovery_dialogs_expose_real_candidates(qtbot, workdir):
     result = DiscoveryResult((candidate,), paths_checked=1, rejected=0)
     module_dialog = ModuleSelectionDialog(result)
     certificate_dialog = CertificateSelectionDialog(candidate)
+    token_dialog = TokenSelectionDialog(candidate)
     qtbot.addWidget(module_dialog)
     qtbot.addWidget(certificate_dialog)
+    qtbot.addWidget(token_dialog)
 
     assert module_dialog.selected_candidate() == candidate
     assert certificate_dialog.model.data(
         certificate_dialog.model.index(0, 1)
     ) == "Firma documenti"
     assert certificate_dialog.selected_label() == "Firma documenti"
+    assert token_dialog.selected_token() == candidate.tokens[0]
+
+
+def test_selecting_one_of_multiple_tokens_keeps_its_certificate_id(
+    qtbot, workdir
+):
+    first_certificate = CertificateCandidate(
+        label="Firma", id_hex="01", content_commitment=True
+    )
+    second_certificate = CertificateCandidate(
+        label="Firma", id_hex="02", content_commitment=True
+    )
+    first = TokenCandidate(
+        slot_id=1,
+        label="Token uguale",
+        serial="SER-A",
+        serial_hex="5345522d41",
+        certificates=(first_certificate,),
+    )
+    second = TokenCandidate(
+        slot_id=2,
+        label="Token uguale",
+        serial="SER-B",
+        serial_hex="5345522d42",
+        certificates=(second_certificate,),
+    )
+    candidate = ModuleCandidate(
+        path=workdir / "vendor-pkcs11.dll",
+        architecture="x64",
+        source="test",
+        token_labels=("Token uguale",),
+        certificate_labels=("Firma",),
+        document_signing_labels=("Firma",),
+        certificate_ids=(("Firma", "01"),),
+        certificates=(first_certificate,),
+        tokens=(first, second),
+    )
+    page = SettingsPage(AppConfig())
+    qtbot.addWidget(page)
+
+    assert page.apply_module_candidate(candidate) is False
+    assert page.selected_token(candidate) is None
+    assert page.select_token(candidate, second) is False
+    config = page.build_config()
+
+    assert config.pkcs11.token_label == "Token uguale"
+    assert config.pkcs11.token_serial == "5345522d42"
+    assert config.pkcs11.certificate_label == "Firma"
+    assert config.pkcs11.certificate_id == "02"
 
 
 def test_discovery_controller_runs_probe_outside_gui_thread(qtbot, workdir):

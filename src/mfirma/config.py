@@ -35,6 +35,7 @@ class SignatureConfig:
 class Pkcs11Config:
     module_path: str = ""
     token_label: str = ""
+    token_serial: str = ""
     certificate_label: str = ""
     certificate_id: str = ""
     key_label: str = ""
@@ -66,6 +67,13 @@ class AppConfig:
             raise ValueError("Le dimensioni della firma devono essere positive")
         if self.signature.appearance_variant not in {"complete", "compact"}:
             raise ValueError("Variante aspetto firma non valida")
+        if self.pkcs11.token_serial:
+            try:
+                serial = bytes.fromhex(self.pkcs11.token_serial)
+            except ValueError as exc:
+                raise ValueError("Seriale PKCS#11 del token non valido") from exc
+            if not serial:
+                raise ValueError("Seriale PKCS#11 del token vuoto")
         suffix = self.output.suffix
         if not suffix or any(char in suffix for char in '<>:"/\\|?*'):
             raise ValueError("Suffisso di output non valido")

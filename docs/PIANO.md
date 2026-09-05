@@ -61,9 +61,10 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
   accessibilità/tastiera: **implementate e testate automaticamente**;
 - tema chiaro/scuro e scaling: **smoke test offscreen**, resta il collaudo
   visivo sulle postazioni Windows reali;
-- prossimo incremento: selezione esplicita del token quando più dispositivi
-  sono collegati;
-- selezione del token quando più dispositivi sono collegati;
+- selezione esplicita del token quando più dispositivi sono collegati, con
+  seriale pubblico e inventario certificati per dispositivo: **implementata e
+  testata senza hardware**;
+- prossimo incremento: istanza singola e selezione multipla da Esplora file;
 - istanza singola, launcher e selezione multipla da Esplora file;
 - log rotanti e cronologia locale.
 

@@ -1,7 +1,7 @@
 from .batch_result_model import BatchResultModel, ProblemsFilterModel, user_message
 from .document_filter_model import DocumentFilterModel
 from .document_table_model import DocumentTableModel
-from .discovery_models import CertificateTableModel, ModuleTableModel
+from .discovery_models import CertificateTableModel, ModuleTableModel, TokenTableModel
 
 __all__ = [
     "CertificateTableModel",
@@ -9,6 +9,7 @@ __all__ = [
     "DocumentFilterModel",
     "DocumentTableModel",
     "ModuleTableModel",
+    "TokenTableModel",
     "ProblemsFilterModel",
     "user_message",
 ]

@@ -47,6 +47,7 @@ def test_provider_uses_certificate_id_for_private_key(
     config = Pkcs11Config(
         module_path=str(module),
         token_label="TOKEN",
+        token_serial="53455249414c",
         certificate_label="Certificate label",
         certificate_id="445333",
     )
@@ -56,6 +57,8 @@ def test_provider_uses_certificate_id_for_private_key(
         pass
 
     assert captured["cert_label"] is None
+    assert captured["token_criteria"].label == "TOKEN"
+    assert captured["token_criteria"].serial == b"SERIAL"
     assert captured["cert_id"] == b"DS3"
     assert captured["key_label"] is None
     assert captured["key_id"] == b"DS3"

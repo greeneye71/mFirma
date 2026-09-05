@@ -2,6 +2,12 @@
 
 ## Non rilasciato
 
+- aggiunto l'inventario PKCS#11 per singolo token e un dialogo di scelta quando
+  sono collegati più dispositivi;
+- il seriale pubblico del token viene salvato in esadecimale e passato a
+  pyHanko, evitando ambiguità tra token con la stessa etichetta;
+- la scelta del certificato e del relativo `CKA_ID` è ora confinata al token
+  selezionato;
 - aggiunto uno stato finestra separato, validato e atomico per ripristinare
   dimensione, posizione e massimizzazione dentro i monitor disponibili;
 - completati i comandi tastiera della dashboard (`Ctrl+F`, `Ctrl+A`, `F5`,

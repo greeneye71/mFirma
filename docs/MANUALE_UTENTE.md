@@ -104,7 +104,8 @@ Nella parte superiore della finestra compilare:
 |---|---|
 | Cartella da firmare | Radice che contiene una sottocartella per ogni persona |
 | DLL PKCS#11 | Libreria installata dal middleware; usare `Rileva…` o `Sfoglia…` |
-| Token | Etichetta del token; può restare vuota se è presente un solo token |
+| Token | Etichetta del token, compilata dalla lettura quando possibile |
+| Seriale (hex) | Identificatore pubblico compilato automaticamente; non è modificabile |
 | Certificato | Etichetta del certificato di firma; usare `Leggi card…` per sceglierla |
 | Chiave | Etichetta della chiave privata, solo se diversa dal certificato |
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
@@ -130,6 +131,12 @@ La finestra mostra percorso, eventuali token collegati e origine della
 candidata. Selezionare una riga e premere `Usa selezionata`, oppure fare doppio
 clic. Quando viene rilevata una sola etichetta di token o certificato e il campo
 corrispondente è vuoto, viene compilato automaticamente.
+
+Se sono collegati più token o smart card, mFirma apre prima l'elenco dei
+dispositivi con etichetta, seriale, produttore, modello e slot. Scegliere il
+dispositivo da usare; il seriale pubblico permette di distinguere anche token
+con la stessa etichetta. Solo dopo vengono mostrati i certificati appartenenti
+al dispositivo scelto.
 
 Un middleware valido può comparire anche come `nessuno collegato` quando il
 token non è inserito. Se la ricerca non trova nulla, usare `Sfoglia…` e indicare

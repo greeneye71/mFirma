@@ -10,43 +10,44 @@ from PySide6.QtWidgets import (
 from qfluentwidgets import BodyLabel, PrimaryPushButton, PushButton, SubtitleLabel
 
 from ...discovery import ModuleCandidate, TokenCandidate
-from ..models import CertificateTableModel
+from ..models import TokenTableModel
 
 
-class CertificateSelectionDialog(QDialog):
+class TokenSelectionDialog(QDialog):
     def __init__(
         self,
-        candidate: ModuleCandidate | TokenCandidate,
+        candidate: ModuleCandidate,
         *,
         current_label: str = "",
+        current_serial: str = "",
         parent=None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("Certificati sulla card")
+        self.setWindowTitle("Dispositivi di firma")
         self.setModal(True)
-        self.resize(1080, 430)
-        self.setMinimumSize(760, 320)
-        self.model = CertificateTableModel(candidate, self)
+        self.resize(900, 400)
+        self.setMinimumSize(700, 300)
+        self.model = TokenTableModel(candidate.tokens, self)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
-        layout.addWidget(SubtitleLabel("Scegli il certificato di firma", self))
+        layout.addWidget(SubtitleLabel("Scegli il token o la smart card", self))
         explanation = BodyLabel(
-            "Sono mostrati soltanto certificati pubblici letti senza PIN. "
-            "“Firma documenti” indica l’uso contentCommitment dichiarato dal certificato.",
+            "Il seriale pubblico distingue dispositivi con la stessa etichetta. "
+            "La lettura non richiede il PIN.",
             self,
         )
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
 
         self.table = QTableView(self)
-        self.table.setObjectName("certificateTable")
+        self.table.setObjectName("tokenTable")
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        for column, width in enumerate((190, 170, 280, 280, 110)):
+        for column, width in enumerate((190, 170, 180, 150, 80)):
             self.table.setColumnWidth(column, width)
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table, 1)
@@ -54,7 +55,7 @@ class CertificateSelectionDialog(QDialog):
         buttons = QHBoxLayout()
         buttons.addStretch(1)
         cancel = PushButton("Annulla", self)
-        self.use_button = PrimaryPushButton("Usa certificato", self)
+        self.use_button = PrimaryPushButton("Usa dispositivo", self)
         self.use_button.setEnabled(self.model.rowCount() > 0)
         buttons.addWidget(cancel)
         buttons.addWidget(self.use_button)
@@ -65,14 +66,16 @@ class CertificateSelectionDialog(QDialog):
 
         selected_row = 0
         for row in range(self.model.rowCount()):
-            certificate = self.model.certificate(row)
-            if certificate and certificate.label == current_label:
+            token = self.model.token(row)
+            if token and (
+                (current_serial and token.serial_hex == current_serial)
+                or (not current_serial and token.label == current_label)
+            ):
                 selected_row = row
                 break
         if self.model.rowCount():
             self.table.selectRow(selected_row)
 
-    def selected_label(self) -> str:
+    def selected_token(self) -> TokenCandidate | None:
         rows = self.table.selectionModel().selectedRows()
-        certificate = self.model.certificate(rows[0].row()) if rows else None
-        return certificate.label if certificate else ""
+        return self.model.token(rows[0].row()) if rows else None

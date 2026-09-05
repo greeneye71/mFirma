@@ -105,6 +105,8 @@ Implementato:
   la DLL, con riconoscimento dell'uso `contentCommitment` per la firma documenti.
 - comando `Leggi card…` con elenco di etichetta, uso, intestatario, emittente e
   scadenza dei certificati pubblici.
+- scelta esplicita del token quando più dispositivi sono collegati, con
+  associazione stabile tramite seriale pubblico anche per etichette uguali.
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
 - aspetto firma vettoriale completo (240 × 92 pt) o compatto (190 × 68 pt),
   condiviso con l'anteprima Qt e con cleanup deterministico.

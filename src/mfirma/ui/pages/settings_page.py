@@ -27,7 +27,7 @@ from qfluentwidgets import (
 )
 
 from ...config import AppConfig
-from ...discovery import CertificateCandidate, ModuleCandidate
+from ...discovery import CertificateCandidate, ModuleCandidate, TokenCandidate
 
 
 class _SettingsSection(QFrame):
@@ -64,6 +64,7 @@ class SettingsPage(QWidget):
         self._certificate_ids_by_label: dict[str, str] = {}
         self._certificate_details_by_label: dict[str, CertificateCandidate] = {}
         self._certificate_id_module_path = ""
+        self._certificate_id_token_serial = ""
         self._build_ui()
         self.load_config(config)
 
@@ -116,11 +117,17 @@ class SettingsPage(QWidget):
         device.layout.addWidget(module_browse, 1, 3)
         self.token_label = LineEdit(device)
         self.token_label.setObjectName("tokenLabel")
+        self.token_serial = LineEdit(device)
+        self.token_serial.setObjectName("tokenSerial")
+        self.token_serial.setReadOnly(True)
+        self.token_serial.setPlaceholderText("Compilato da Leggi card")
         self.certificate_label = LineEdit(device)
         self.certificate_label.setObjectName("certificateLabel")
         self.read_card_button = PushButton("Leggi card", device)
         device.layout.addWidget(QLabel("Token"), 2, 0)
         device.layout.addWidget(self.token_label, 2, 1)
+        device.layout.addWidget(QLabel("Seriale (hex)"), 2, 2)
+        device.layout.addWidget(self.token_serial, 2, 3)
         device.layout.addWidget(QLabel("Certificato"), 3, 0)
         device.layout.addWidget(self.certificate_label, 3, 1, 1, 2)
         device.layout.addWidget(self.read_card_button, 3, 3)
@@ -199,6 +206,8 @@ class SettingsPage(QWidget):
         self.read_card_button.clicked.connect(self.readCardRequested)
         self.save_button.clicked.connect(self.saveRequested)
         self.appearance_variant.currentIndexChanged.connect(self._variant_changed)
+        self.module_path.textChanged.connect(self._module_edited)
+        self.token_label.textEdited.connect(self._token_edited)
         for widget, name in (
             (self.monitor_root, "Cartella monitorata"),
             (root_browse, "Sfoglia cartella monitorata"),
@@ -208,6 +217,7 @@ class SettingsPage(QWidget):
             (self.discover_button, "Rileva middleware PKCS11"),
             (module_browse, "Sfoglia DLL PKCS11"),
             (self.token_label, "Etichetta token"),
+            (self.token_serial, "Seriale pubblico token in esadecimale"),
             (self.certificate_label, "Etichetta certificato"),
             (self.read_card_button, "Leggi certificati dalla card"),
             (self.key_label, "Etichetta chiave avanzata"),
@@ -232,6 +242,7 @@ class SettingsPage(QWidget):
             self.discover_button,
             module_browse,
             self.token_label,
+            self.token_serial,
             self.certificate_label,
             self.read_card_button,
             self.key_label,
@@ -255,6 +266,7 @@ class SettingsPage(QWidget):
         self.stability_seconds.setValue(config.monitor.stability_seconds)
         self.module_path.setText(config.pkcs11.module_path)
         self.token_label.setText(config.pkcs11.token_label)
+        self.token_serial.setText(config.pkcs11.token_serial)
         self.certificate_label.setText(config.pkcs11.certificate_label)
         self.key_label.setText(config.pkcs11.key_label)
         self._set_combo_data(self.preset, config.signature.preset)
@@ -272,11 +284,13 @@ class SettingsPage(QWidget):
         self._certificate_ids_by_label = {}
         self._certificate_details_by_label = {}
         self._certificate_id_module_path = ""
+        self._certificate_id_token_serial = ""
         if config.pkcs11.certificate_label and config.pkcs11.certificate_id:
             self._certificate_ids_by_label[config.pkcs11.certificate_label] = (
                 config.pkcs11.certificate_id
             )
             self._certificate_id_module_path = config.pkcs11.module_path
+            self._certificate_id_token_serial = config.pkcs11.token_serial
 
     def build_config(self) -> AppConfig:
         config = deepcopy(self._loaded_config)
@@ -285,9 +299,13 @@ class SettingsPage(QWidget):
         config.monitor.stability_seconds = self.stability_seconds.value()
         config.pkcs11.module_path = self.module_path.text().strip()
         config.pkcs11.token_label = self.token_label.text().strip()
+        config.pkcs11.token_serial = self.token_serial.text().strip()
         config.pkcs11.certificate_label = self.certificate_label.text().strip()
         config.pkcs11.key_label = self.key_label.text().strip()
-        if config.pkcs11.module_path == self._certificate_id_module_path:
+        if (
+            config.pkcs11.module_path == self._certificate_id_module_path
+            and config.pkcs11.token_serial == self._certificate_id_token_serial
+        ):
             config.pkcs11.certificate_id = self._certificate_ids_by_label.get(
                 config.pkcs11.certificate_label, ""
             )
@@ -312,11 +330,27 @@ class SettingsPage(QWidget):
 
     def apply_module_candidate(self, candidate: ModuleCandidate) -> bool:
         self.module_path.setText(str(candidate.path))
+        if candidate.tokens:
+            selected = candidate.find_token(
+                self.token_label.text().strip(), self.token_serial.text().strip()
+            )
+            if selected is None and len(candidate.tokens) == 1:
+                selected = candidate.tokens[0]
+            if selected is not None:
+                return self.select_token(candidate, selected)
+            self._clear_certificate_inventory()
+            self.discovery_status.setText(
+                f"{len(candidate.tokens)} dispositivi rilevati: scegline uno"
+            )
+            return False
+
+        # CompatibilitÃ  con risultati prodotti da versioni precedenti.
         self._certificate_ids_by_label = dict(candidate.certificate_ids)
         self._certificate_details_by_label = {
             certificate.label: certificate for certificate in candidate.certificates
         }
         self._certificate_id_module_path = str(candidate.path)
+        self._certificate_id_token_serial = ""
         current_token = self.token_label.text().strip()
         if (
             len(candidate.token_labels) == 1
@@ -340,11 +374,76 @@ class SettingsPage(QWidget):
         )
         return needs_confirmation
 
-    def select_certificate(self, candidate: ModuleCandidate, label: str) -> None:
+    def select_token(
+        self, candidate: ModuleCandidate, token: TokenCandidate
+    ) -> bool:
+        if token not in candidate.tokens:
+            raise ValueError("Dispositivo non presente nella lettura corrente")
+        self.token_label.setText(token.label)
+        self.token_serial.setText(token.serial_hex)
+        needs_confirmation = self._apply_certificate_inventory(
+            token, str(candidate.path), token.serial_hex
+        )
+        count = len(token.certificate_labels)
+        description = token.label or token.serial or str(token.slot_id)
+        self.discovery_status.setText(
+            f"{count} certificati pubblici letti da {description}"
+            if count
+            else f"Dispositivo letto: {description}; nessun certificato pubblico"
+        )
+        return needs_confirmation
+
+    def selected_token(self, candidate: ModuleCandidate) -> TokenCandidate | None:
+        return candidate.find_token(
+            self.token_label.text().strip(), self.token_serial.text().strip()
+        )
+
+    def _apply_certificate_inventory(
+        self,
+        inventory: ModuleCandidate | TokenCandidate,
+        module_path: str,
+        token_serial: str,
+    ) -> bool:
+        self._certificate_ids_by_label = dict(inventory.certificate_ids)
+        self._certificate_details_by_label = {
+            certificate.label: certificate for certificate in inventory.certificates
+        }
+        self._certificate_id_module_path = module_path
+        self._certificate_id_token_serial = token_serial
+        current_certificate = self.certificate_label.text().strip()
+        if current_certificate in inventory.certificate_labels:
+            return False
+        if len(inventory.document_signing_labels) == 1:
+            self.certificate_label.setText(inventory.document_signing_labels[0])
+            return False
+        if len(inventory.certificate_labels) == 1:
+            self.certificate_label.setText(inventory.certificate_labels[0])
+            return False
+        self.certificate_label.clear()
+        return len(inventory.certificate_labels) > 1
+
+    def select_certificate(
+        self, candidate: ModuleCandidate | TokenCandidate, label: str
+    ) -> None:
         if label not in candidate.certificate_labels:
             raise ValueError("Certificato non presente nella card letta")
         self.certificate_label.setText(label)
         self.discovery_status.setText(f"Certificato selezionato: {label}")
+
+    def _clear_certificate_inventory(self) -> None:
+        self._certificate_ids_by_label = {}
+        self._certificate_details_by_label = {}
+        self._certificate_id_module_path = ""
+        self._certificate_id_token_serial = ""
+        self.certificate_label.clear()
+
+    def _module_edited(self, _text: str) -> None:
+        self.token_serial.clear()
+        self._clear_certificate_inventory()
+
+    def _token_edited(self, _text: str) -> None:
+        self.token_serial.clear()
+        self._clear_certificate_inventory()
 
     def set_discovery_busy(self, busy: bool) -> None:
         self.discover_button.setEnabled(not busy)

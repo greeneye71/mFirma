@@ -21,7 +21,12 @@ from ..discovery import ModuleCandidate
 from ..models import SignaturePositionPlan
 from ..provider import Pkcs11SigningProvider, SigningProvider
 from ..scanner import ScanResult, candidates_from_paths
-from .dialogs import CertificateSelectionDialog, ModuleSelectionDialog, PinDialog
+from .dialogs import (
+    CertificateSelectionDialog,
+    ModuleSelectionDialog,
+    PinDialog,
+    TokenSelectionDialog,
+)
 from .pages.history_page import HistoryPage
 from .pages.preview_page import PreviewPage
 from .pages.progress_page import ProgressPage
@@ -309,9 +314,38 @@ class MFirmaQtWindow(MSFluentWindow):
         force_certificate_dialog: bool = False,
     ) -> None:
         needs_confirmation = self.settings_page.apply_module_candidate(candidate)
+        certificate_inventory = candidate
+        if candidate.tokens:
+            token = self.settings_page.selected_token(candidate)
+            if len(candidate.tokens) > 1 and (
+                force_certificate_dialog or token is None
+            ):
+                token_dialog = TokenSelectionDialog(
+                    candidate,
+                    current_label=self.settings_page.token_label.text().strip(),
+                    current_serial=self.settings_page.token_serial.text().strip(),
+                    parent=self,
+                )
+                if token_dialog.exec() != QDialog.DialogCode.Accepted:
+                    return
+                token = token_dialog.selected_token()
+                if token is None:
+                    return
+                needs_confirmation = self.settings_page.select_token(
+                    candidate, token
+                )
+            if token is None:
+                QMessageBox.information(
+                    self,
+                    "Dispositivo di firma",
+                    "La DLL Ã¨ valida, ma non risultano token o smart card collegati.",
+                )
+                return
+            certificate_inventory = token
+
         if not (force_certificate_dialog or needs_confirmation):
             return
-        if not candidate.certificate_labels:
+        if not certificate_inventory.certificate_labels:
             QMessageBox.information(
                 self,
                 "Certificati sulla card",
@@ -320,14 +354,14 @@ class MFirmaQtWindow(MSFluentWindow):
             )
             return
         dialog = CertificateSelectionDialog(
-            candidate,
+            certificate_inventory,
             current_label=self.settings_page.certificate_label.text().strip(),
             parent=self,
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             label = dialog.selected_label()
             if label:
-                self.settings_page.select_certificate(candidate, label)
+                self.settings_page.select_certificate(certificate_inventory, label)
 
     @Slot(object, str)
     def _discovery_failed(

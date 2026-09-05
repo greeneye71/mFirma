@@ -14,6 +14,18 @@ def _public_text(value: object) -> str:
     return str(value).rstrip("\0 ")
 
 
+def _public_hex(value: object) -> str:
+    """Encode a public byte field losslessly for the parent process."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        value = value.encode("utf-8")
+    try:
+        return bytes(value).hex()  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ""
+
+
 def _certificate_details(value: object) -> dict[str, object]:
     try:
         from cryptography import x509
@@ -60,6 +72,7 @@ def probe_module(module_path: Path) -> list[dict[str, Any]]:
             "slot_id": slot.slot_id,
             "token_label": _public_text(token.label),
             "token_serial": _public_text(token.serial),
+            "token_serial_hex": _public_hex(token.serial),
             "manufacturer": _public_text(token.manufacturer_id),
             "model": _public_text(token.model),
             "certificates": [],

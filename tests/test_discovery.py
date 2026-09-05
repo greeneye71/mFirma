@@ -11,7 +11,12 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 from mfirma import discovery
-from mfirma.probe import _certificate_details, _certificate_key_usage, _public_text
+from mfirma.probe import (
+    _certificate_details,
+    _certificate_key_usage,
+    _public_hex,
+    _public_text,
+)
 
 
 def _write_pe_dll(path: Path, machine: int) -> None:
@@ -74,7 +79,12 @@ def test_discovery_collects_unique_token_and_certificate_labels(
     _write_pe_dll(module, 0x8664)
     payload = [
         {
+            "slot_id": 9,
             "token_label": "Token B",
+            "token_serial": "SER-B",
+            "token_serial_hex": "5345522d42",
+            "manufacturer": "Vendor",
+            "model": "Card 2",
             "certificates": [
                 {
                     "label": "Firma",
@@ -88,7 +98,13 @@ def test_discovery_collects_unique_token_and_certificate_labels(
                 {"label": "Firma"},
             ],
         },
-        {"token_label": "Token A", "certificates": []},
+        {
+            "slot_id": 3,
+            "token_label": "Token A",
+            "token_serial": "SER-A",
+            "token_serial_hex": "5345522d41",
+            "certificates": [],
+        },
     ]
     monkeypatch.setattr(
         discovery, "_probe_in_subprocess", lambda _path, _timeout: payload
@@ -108,6 +124,11 @@ def test_discovery_collects_unique_token_and_certificate_labels(
     assert certificate.not_before == "2026-01-01"
     assert certificate.not_after == "2028-01-01"
     assert certificate.content_commitment is True
+    assert [token.label for token in candidate.tokens] == ["Token A", "Token B"]
+    token = candidate.tokens[1]
+    assert token.serial_hex == "5345522d42"
+    assert token.manufacturer == "Vendor"
+    assert token.certificate_ids == (("Firma", "445333"),)
 
 
 def test_probe_uses_console_python_when_app_runs_with_pythonw(
@@ -134,6 +155,8 @@ def test_probe_normalises_byte_fields_for_json_output():
     assert _public_text(b"Firma digitale   \0") == "Firma digitale"
     assert _public_text("Token   ") == "Token"
     assert _public_text(None) == ""
+    assert _public_hex(b"SER-1") == "5345522d31"
+    assert _public_hex(None) == ""
     assert _certificate_key_usage(b"not a certificate") == {}
 
 

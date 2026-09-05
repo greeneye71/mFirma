@@ -24,6 +24,20 @@ def _decode_pkcs11_id(value: str) -> bytes | None:
     return decoded
 
 
+def _decode_token_serial(value: str) -> bytes | None:
+    if not value:
+        return None
+    try:
+        decoded = bytes.fromhex(value)
+    except ValueError as exc:
+        raise ProviderConfigurationError(
+            "Seriale PKCS#11 del token non valido"
+        ) from exc
+    if not decoded:
+        raise ProviderConfigurationError("Seriale PKCS#11 del token vuoto")
+    return decoded
+
+
 class SigningSession(Protocol):
     def sign_pdf(
         self,
@@ -86,11 +100,13 @@ class Pkcs11SigningProvider:
             from pyhanko.config.pkcs11 import PKCS11SignatureConfig, TokenCriteria
             from pyhanko.sign.pkcs11 import PKCS11SigningContext
 
-            criteria = (
-                TokenCriteria(label=self.config.token_label)
-                if self.config.token_label
-                else None
-            )
+            token_serial = _decode_token_serial(self.config.token_serial)
+            criteria = None
+            if self.config.token_label or token_serial:
+                criteria = TokenCriteria(
+                    label=self.config.token_label or None,
+                    serial=token_serial,
+                )
             certificate_id = _decode_pkcs11_id(self.config.certificate_id)
             key_label = self.config.key_label or None
             config = PKCS11SignatureConfig(

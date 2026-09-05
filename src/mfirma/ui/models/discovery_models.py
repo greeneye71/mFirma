@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
-from ...discovery import CertificateCandidate, ModuleCandidate
+from ...discovery import CertificateCandidate, ModuleCandidate, TokenCandidate
 
 
 class ModuleTableModel(QAbstractTableModel):
@@ -41,6 +41,11 @@ class ModuleTableModel(QAbstractTableModel):
         if index.column() == 0:
             return str(candidate.path)
         if index.column() == 1:
+            if candidate.tokens:
+                return ", ".join(
+                    token.label or f"slot {token.slot_id}"
+                    for token in candidate.tokens
+                )
             return ", ".join(candidate.token_labels) or "Nessuno collegato"
         if index.column() == 2:
             return ", ".join(candidate.certificate_labels) or "—"
@@ -56,7 +61,7 @@ class CertificateTableModel(QAbstractTableModel):
     HEADERS = ("Etichetta", "Uso rilevato", "Intestatario", "Emittente", "Scadenza")
     CERTIFICATE_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 
-    def __init__(self, candidate: ModuleCandidate, parent=None):
+    def __init__(self, candidate: ModuleCandidate | TokenCandidate, parent=None):
         super().__init__(parent)
         details = {item.label: item for item in candidate.certificates}
         labels = sorted(
@@ -112,3 +117,47 @@ class CertificateTableModel(QAbstractTableModel):
         if certificate.digital_signature:
             return "Firma / autenticazione"
         return "Altro / non determinato"
+
+
+class TokenTableModel(QAbstractTableModel):
+    HEADERS = ("Etichetta", "Seriale", "Produttore", "Modello", "Slot")
+    TOKEN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+
+    def __init__(self, tokens: tuple[TokenCandidate, ...], parent=None):
+        super().__init__(parent)
+        self._tokens = tokens
+
+    def rowCount(self, parent=QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self._tokens)
+
+    def columnCount(self, parent=QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self.HEADERS)
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):  # noqa: N802
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+            and 0 <= section < len(self.HEADERS)
+        ):
+            return self.HEADERS[section]
+        return None
+
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not 0 <= index.row() < len(self._tokens):
+            return None
+        token = self._tokens[index.row()]
+        if role == self.TOKEN_ROLE:
+            return token
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+        values = (
+            token.label or "(senza etichetta)",
+            token.serial or token.serial_hex or "—",
+            token.manufacturer or "—",
+            token.model or "—",
+            str(token.slot_id),
+        )
+        return values[index.column()]
+
+    def token(self, row: int) -> TokenCandidate | None:
+        return self._tokens[row] if 0 <= row < len(self._tokens) else None

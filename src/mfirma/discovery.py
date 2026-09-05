@@ -49,6 +49,37 @@ class CertificateCandidate:
 
 
 @dataclass(frozen=True, slots=True)
+class TokenCandidate:
+    slot_id: int | str
+    label: str = ""
+    serial: str = ""
+    serial_hex: str = ""
+    manufacturer: str = ""
+    model: str = ""
+    certificates: tuple[CertificateCandidate, ...] = ()
+
+    @property
+    def certificate_labels(self) -> tuple[str, ...]:
+        return tuple(certificate.label for certificate in self.certificates)
+
+    @property
+    def document_signing_labels(self) -> tuple[str, ...]:
+        return tuple(
+            certificate.label
+            for certificate in self.certificates
+            if certificate.content_commitment
+        )
+
+    @property
+    def certificate_ids(self) -> tuple[tuple[str, str], ...]:
+        return tuple(
+            (certificate.label, certificate.id_hex)
+            for certificate in self.certificates
+            if certificate.id_hex
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ModuleCandidate:
     path: Path
     architecture: str
@@ -58,6 +89,16 @@ class ModuleCandidate:
     document_signing_labels: tuple[str, ...] = ()
     certificate_ids: tuple[tuple[str, str], ...] = ()
     certificates: tuple[CertificateCandidate, ...] = ()
+    tokens: tuple[TokenCandidate, ...] = ()
+
+    def find_token(self, label: str, serial_hex: str = "") -> TokenCandidate | None:
+        if serial_hex:
+            matches = [token for token in self.tokens if token.serial_hex == serial_hex]
+            if label:
+                matches = [token for token in matches if token.label == label]
+            return matches[0] if len(matches) == 1 else None
+        matches = [token for token in self.tokens if token.label == label]
+        return matches[0] if len(matches) == 1 else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -291,6 +332,7 @@ def discover_pkcs11_modules(
             return None
         # An empty list is a valid response: the middleware may be installed
         # while its smart card or USB token is currently disconnected.
+        token_candidates: list[TokenCandidate] = []
         token_labels: set[str] = set()
         certificate_labels: set[str] = set()
         document_signing_labels: set[str] = set()
@@ -300,8 +342,10 @@ def discover_pkcs11_modules(
             if not isinstance(token, dict):
                 continue
             label = token.get("token_label")
-            if isinstance(label, str) and label.strip():
-                token_labels.add(label.strip())
+            clean_token_label = label.strip() if isinstance(label, str) else ""
+            if clean_token_label:
+                token_labels.add(clean_token_label)
+            token_certificates: dict[str, CertificateCandidate] = {}
             certificates = token.get("certificates", [])
             if isinstance(certificates, list):
                 for certificate in certificates:
@@ -323,43 +367,73 @@ def discover_pkcs11_modules(
                             isinstance(key_usage, dict)
                             and key_usage.get("content_commitment") is True
                         )
-                        certificate_details.setdefault(
-                            clean_label,
-                            CertificateCandidate(
-                                label=clean_label,
-                                id_hex=(
-                                    identifier
-                                    if isinstance(identifier, str)
-                                    else ""
-                                ),
-                                subject=(
-                                    certificate.get("subject", "")
-                                    if isinstance(certificate.get("subject"), str)
-                                    else ""
-                                ),
-                                issuer=(
-                                    certificate.get("issuer", "")
-                                    if isinstance(certificate.get("issuer"), str)
-                                    else ""
-                                ),
-                                not_before=(
-                                    certificate.get("not_before", "")
-                                    if isinstance(certificate.get("not_before"), str)
-                                    else ""
-                                ),
-                                not_after=(
-                                    certificate.get("not_after", "")
-                                    if isinstance(certificate.get("not_after"), str)
-                                    else ""
-                                ),
-                                digital_signature=digital_signature,
-                                content_commitment=content_commitment,
+                        detail = CertificateCandidate(
+                            label=clean_label,
+                            id_hex=(
+                                identifier if isinstance(identifier, str) else ""
                             ),
+                            subject=(
+                                certificate.get("subject", "")
+                                if isinstance(certificate.get("subject"), str)
+                                else ""
+                            ),
+                            issuer=(
+                                certificate.get("issuer", "")
+                                if isinstance(certificate.get("issuer"), str)
+                                else ""
+                            ),
+                            not_before=(
+                                certificate.get("not_before", "")
+                                if isinstance(certificate.get("not_before"), str)
+                                else ""
+                            ),
+                            not_after=(
+                                certificate.get("not_after", "")
+                                if isinstance(certificate.get("not_after"), str)
+                                else ""
+                            ),
+                            digital_signature=digital_signature,
+                            content_commitment=content_commitment,
                         )
-                        if (
-                            content_commitment
-                        ):
+                        token_certificates.setdefault(clean_label, detail)
+                        certificate_details.setdefault(clean_label, detail)
+                        if content_commitment:
                             document_signing_labels.add(clean_label)
+            slot_id = token.get("slot_id", "")
+            if not isinstance(slot_id, (int, str)):
+                slot_id = str(slot_id)
+            token_candidates.append(
+                TokenCandidate(
+                    slot_id=slot_id,
+                    label=clean_token_label,
+                    serial=(
+                        token.get("token_serial", "")
+                        if isinstance(token.get("token_serial"), str)
+                        else ""
+                    ),
+                    serial_hex=(
+                        token.get("token_serial_hex", "")
+                        if isinstance(token.get("token_serial_hex"), str)
+                        else ""
+                    ),
+                    manufacturer=(
+                        token.get("manufacturer", "")
+                        if isinstance(token.get("manufacturer"), str)
+                        else ""
+                    ),
+                    model=(
+                        token.get("model", "")
+                        if isinstance(token.get("model"), str)
+                        else ""
+                    ),
+                    certificates=tuple(
+                        sorted(
+                            token_certificates.values(),
+                            key=lambda certificate: certificate.label.casefold(),
+                        )
+                    ),
+                )
+            )
         return ModuleCandidate(
             path=path,
             architecture=architecture,
@@ -376,6 +450,16 @@ def discover_pkcs11_modules(
                 sorted(
                     certificate_details.values(),
                     key=lambda certificate: certificate.label.casefold(),
+                )
+            ),
+            tokens=tuple(
+                sorted(
+                    token_candidates,
+                    key=lambda token: (
+                        token.label.casefold(),
+                        token.serial_hex,
+                        str(token.slot_id),
+                    ),
                 )
             ),
         )

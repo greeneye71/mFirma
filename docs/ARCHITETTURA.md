@@ -78,12 +78,16 @@ PIN e con timeout. Questo confina blocchi o crash del middleware fuori dal
 processo grafico. Il risultato ritorna alla GUI tramite segnali Qt; il percorso
 viene salvato soltanto dopo la scelta dell'utente.
 
-Lo stesso probe isolato viene eseguito su una DLL scelta manualmente. Le
-etichette pubbliche vengono restituite alla GUI: una singola etichetta viene
-compilata automaticamente. Per più certificati viene analizzata l'estensione
-X.509 Key Usage: un unico certificato `contentCommitment` viene scelto come firma
-documenti, altrimenti le etichette sono presentate in una finestra di scelta.
-Non viene effettuato il login sul token.
+Lo stesso probe isolato viene eseguito su una DLL scelta manualmente. Il
+risultato conserva separatamente, per ogni slot, etichetta, seriale pubblico,
+produttore, modello e relativi certificati. Un solo dispositivo viene compilato
+automaticamente; se ne sono collegati più di uno la GUI richiede una scelta
+esplicita. Il seriale viene conservato in esadecimale e passato alla
+`TokenCriteria` pubblica di pyHanko, così dispositivi con la stessa etichetta non
+vengono confusi. Per più certificati del dispositivo scelto viene analizzata
+l'estensione X.509 Key Usage: un unico certificato `contentCommitment` viene
+scelto come firma documenti, altrimenti le etichette sono presentate in una
+finestra di scelta. Non viene effettuato il login sul token.
 
 Il comando `Leggi card…` richiama lo stesso flusso e forza la visualizzazione
 dell'inventario. Il probe decodifica dal certificato X.509 soltanto dati
@@ -151,8 +155,9 @@ assente l'ultima fotografia non viene cancellata.
 `DiscoveryController` esegue `discover_pkcs11_modules` in `QThreadPool`. La DLL
 continua a essere caricata soltanto dal probe figlio isolato: il worker Qt non
 cambia il confine di sicurezza. I risultati pubblici alimentano modelli e
-dialoghi dedicati; la scelta confermata conserva il `CKA_ID` pubblico insieme
-all'etichetta. `SettingsPage` costruisce un `AppConfig` validato, poi la finestra
+dialoghi dedicati; la scelta confermata conserva il seriale pubblico del token e
+il `CKA_ID` del certificato, mantenendo l'inventario associato al singolo
+dispositivo. `SettingsPage` costruisce un `AppConfig` validato, poi la finestra
 lo salva atomicamente tramite `ConfigRepository`.
 
 `PreviewController` legge CropBox, rotazione e firme esistenti fuori dal thread

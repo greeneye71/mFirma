@@ -1,6 +1,8 @@
 from dataclasses import asdict
 from pathlib import Path
 
+import pytest
+
 from mfirma.config import AppConfig, ConfigRepository
 
 
@@ -9,6 +11,7 @@ def test_config_roundtrip_has_no_pin_field(workdir: Path):
     config = AppConfig()
     config.monitor.root = r"\\server\Da firmare"
     config.pkcs11.module_path = r"C:\Vendor\token.dll"
+    config.pkcs11.token_serial = "5345522d31"
     config.pkcs11.certificate_label = "Firma"
     config.pkcs11.certificate_id = "445333"
 
@@ -32,9 +35,18 @@ def test_old_config_without_certificate_id_remains_supported():
     )
 
     assert config.pkcs11.certificate_id == ""
+    assert config.pkcs11.token_serial == ""
     assert config.signature.appearance_variant == "complete"
     assert config.signature.width_points == 240.0
     assert config.signature.height_points == 92.0
+
+
+def test_config_rejects_non_hex_token_serial():
+    config = AppConfig()
+    config.pkcs11.token_serial = "SERIALE"
+
+    with pytest.raises(ValueError, match="Seriale PKCS#11"):
+        config.validate()
 
 
 def test_old_default_appearance_dimensions_are_migrated():
