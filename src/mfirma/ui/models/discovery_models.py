@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+
+from ...discovery import CertificateCandidate, ModuleCandidate
+
+
+class ModuleTableModel(QAbstractTableModel):
+    HEADERS = ("DLL x64", "Token rilevati", "Certificati pubblici", "Origine")
+    CANDIDATE_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+
+    def __init__(self, candidates: tuple[ModuleCandidate, ...], parent=None):
+        super().__init__(parent)
+        self._candidates = candidates
+
+    def rowCount(self, parent=QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self._candidates)
+
+    def columnCount(self, parent=QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self.HEADERS)
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):  # noqa: N802
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+            and 0 <= section < len(self.HEADERS)
+        ):
+            return self.HEADERS[section]
+        return None
+
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not 0 <= index.row() < len(self._candidates):
+            return None
+        candidate = self._candidates[index.row()]
+        if role == self.CANDIDATE_ROLE:
+            return candidate
+        if role == Qt.ItemDataRole.ToolTipRole:
+            return str(candidate.path)
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+        if index.column() == 0:
+            return str(candidate.path)
+        if index.column() == 1:
+            return ", ".join(candidate.token_labels) or "Nessuno collegato"
+        if index.column() == 2:
+            return ", ".join(candidate.certificate_labels) or "—"
+        if index.column() == 3:
+            return candidate.source
+        return None
+
+    def candidate(self, row: int) -> ModuleCandidate | None:
+        return self._candidates[row] if 0 <= row < len(self._candidates) else None
+
+
+class CertificateTableModel(QAbstractTableModel):
+    HEADERS = ("Etichetta", "Uso rilevato", "Intestatario", "Emittente", "Scadenza")
+    CERTIFICATE_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+
+    def __init__(self, candidate: ModuleCandidate, parent=None):
+        super().__init__(parent)
+        details = {item.label: item for item in candidate.certificates}
+        labels = sorted(
+            candidate.certificate_labels,
+            key=lambda label: (
+                label not in candidate.document_signing_labels,
+                label.casefold(),
+            ),
+        )
+        self._certificates = tuple(
+            details.get(label, CertificateCandidate(label=label)) for label in labels
+        )
+        self._document_signing_labels = frozenset(candidate.document_signing_labels)
+
+    def rowCount(self, parent=QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self._certificates)
+
+    def columnCount(self, parent=QModelIndex()) -> int:  # noqa: N802
+        return 0 if parent.isValid() else len(self.HEADERS)
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):  # noqa: N802
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+            and 0 <= section < len(self.HEADERS)
+        ):
+            return self.HEADERS[section]
+        return None
+
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not 0 <= index.row() < len(self._certificates):
+            return None
+        certificate = self._certificates[index.row()]
+        if role == self.CERTIFICATE_ROLE:
+            return certificate
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+        values = (
+            certificate.label,
+            self._purpose(certificate),
+            certificate.subject,
+            certificate.issuer,
+            certificate.not_after,
+        )
+        return values[index.column()]
+
+    def certificate(self, row: int) -> CertificateCandidate | None:
+        return self._certificates[row] if 0 <= row < len(self._certificates) else None
+
+    def _purpose(self, certificate: CertificateCandidate) -> str:
+        if certificate.label in self._document_signing_labels:
+            return "Firma documenti"
+        if certificate.digital_signature:
+            return "Firma / autenticazione"
+        return "Altro / non determinato"

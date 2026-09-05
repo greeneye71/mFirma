@@ -2,6 +2,12 @@
 
 ## Non rilasciato
 
+- resa operativa la pagina impostazioni Qt con tutti i valori persistiti da
+  `ConfigRepository`, validazione e nessun campo PIN;
+- migrati nella GUI Qt il rilevamento asincrono dei middleware PKCS#11, il probe
+  isolato della DLL e la lettura/selezione dei certificati pubblici della card;
+- aggiunti modelli e dialoghi Qt per middleware e certificati, inclusi uso
+  `contentCommitment`, intestatario, emittente, scadenza e associazione `CKA_ID`;
 - aggiunta la prima dashboard PySide6/Fluent, avviabile con `--qt-dashboard`,
   con navigazione, `QTableView`, filtri e scanner asincrono;
 - selezione dei documenti conservata per percorso normalizzato, ricerca con

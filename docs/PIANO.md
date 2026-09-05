@@ -47,8 +47,10 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 
 - infrastruttura PySide6/Fluent, modello tabellare, dashboard filtrabile e
   scanner Qt: **implementati in modalità di migrazione `--qt-dashboard`**;
-- prossimo incremento: impostazioni/discovery Qt e pagina di anteprima basata
-  su `QPdfDocument` e sul renderer dell'aspetto già disponibile;
+- impostazioni, persistenza, discovery Qt e scelta del certificato pubblico:
+  **implementati e testati senza hardware**;
+- prossimo incremento: pagina di anteprima basata su `QPdfDocument`,
+  `QPdfView` e sul renderer dell'aspetto già disponibile;
 - icona tray e avvio per utente;
 - anteprima della pagina con rettangolo spostabile;
 - selezione del token quando più dispositivi sono collegati;

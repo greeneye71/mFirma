@@ -56,8 +56,9 @@ l'applicazione dal terminale, dalla radice del progetto eseguire:
 
 È disponibile anche una dashboard Qt in migrazione tramite
 `.venv\Scripts\python -m mfirma --qt-dashboard`. Consente scansione, ricerca,
-filtro per persona e selezione, ma non avvia ancora la firma: per l'uso operativo
-continuare ad avviare mFirma senza questa opzione.
+filtro, impostazioni, rilevamento middleware e lettura della card, ma non avvia
+ancora anteprima e firma: per firmare continuare ad avviare mFirma senza questa
+opzione.
 
 ## Configurazione iniziale
 
@@ -73,8 +74,9 @@ Nella parte superiore della finestra compilare:
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
 | Aspetto | `Completo` (240 × 92 pt) oppure `Compatto` (190 × 68 pt) |
 
-La configurazione viene salvata quando si avvia una firma. Il PIN non fa parte
-della configurazione.
+Nella GUI Qt premere `Salva impostazioni`; nella GUI stabile la configurazione
+viene salvata quando si avvia una firma. Il PIN non fa parte della
+configurazione.
 
 L'aspetto completo mostra i dati pubblici essenziali del firmatario, la data e
 l'ora del computer con il fuso, il profilo PAdES B-B, SHA-256 e il numero della

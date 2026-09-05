@@ -43,9 +43,10 @@ GUI Tkinter ───────> BatchOrchestrator
 | `provider.py` | Apertura e chiusura della sessione PKCS#11 |
 | `pdf_service.py` | Campo visibile, PAdES B-B e verifica della nuova firma |
 | `appearance.py` | Modello e rendering vettoriale dell'aspetto, indipendente dalla GUI |
-| `ui/models/` | Modello tabellare e proxy Qt, senza logica di scansione o firma |
-| `ui/workers/` | Scanner fuori dal thread grafico e segnali strutturati |
-| `ui/pages/` | Dashboard e pagine di migrazione per cronologia e impostazioni |
+| `ui/models/` | Modelli Qt per documenti, middleware e certificati |
+| `ui/workers/` | Scanner e discovery fuori dal thread grafico, con segnali strutturati |
+| `ui/pages/` | Dashboard, impostazioni operative e cronologia vuota non simulata |
+| `ui/dialogs/` | Scelta confermata di middleware e certificato pubblico |
 | `ui/main_window.py` | `MSFluentWindow`, navigazione e coordinamento Qt |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
@@ -147,9 +148,16 @@ dipendono dagli indici visibili. `ScanController` consegna il lavoro a un
 `QThreadPool` e riporta alla UI un `ScanResult` immutabile. In caso di rete
 assente l'ultima fotografia non viene cancellata.
 
-La modalità Qt non esegue ancora firma, PIN, anteprima o discovery. Per questo
-non è il punto d'ingresso predefinito e non duplica il flusso completo Tkinter.
-Il passaggio definitivo avverrà soltanto quando tali casi d'uso saranno coperti.
+`DiscoveryController` esegue `discover_pkcs11_modules` in `QThreadPool`. La DLL
+continua a essere caricata soltanto dal probe figlio isolato: il worker Qt non
+cambia il confine di sicurezza. I risultati pubblici alimentano modelli e
+dialoghi dedicati; la scelta confermata conserva il `CKA_ID` pubblico insieme
+all'etichetta. `SettingsPage` costruisce un `AppConfig` validato, poi la finestra
+lo salva atomicamente tramite `ConfigRepository`.
+
+La modalità Qt non esegue ancora firma, PIN o anteprima. Per questo non è il
+punto d'ingresso predefinito e non duplica il flusso completo Tkinter. Il
+passaggio definitivo avverrà soltanto quando tali casi d'uso saranno coperti.
 
 ## Confini intenzionali
 

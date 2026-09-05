@@ -17,8 +17,7 @@ completo continua a usare Tkinter.
   Python; è disponibile soltanto lo script locale `installa_mFirma.cmd`;
 - provider Windows CSP/CNG;
 - TSA e profili PAdES B-T, B-LT e B-LTA;
-- nella dashboard Qt: impostazioni modificabili, discovery, anteprima, PIN,
-  firma, avanzamento, esito e tray;
+- nella dashboard Qt: anteprima, PIN, firma, avanzamento, esito e tray;
 
 ## Limiti operativi
 

@@ -55,8 +55,10 @@ collegata allo scanner. Durante lo sviluppo si può provarla con:
 .venv\Scripts\python -m mfirma --qt-dashboard
 ```
 
-Senza l'opzione viene ancora aperta la GUI Tkinter completa, finché anteprima,
-firma e impostazioni non saranno migrate senza regressioni.
+Senza l'opzione viene ancora aperta la GUI Tkinter completa, finché anteprima e
+firma non saranno migrate senza regressioni. Nella modalità Qt la pagina
+`Impostazioni` è già operativa: salva la configurazione, rileva i middleware e
+legge i certificati pubblici della card senza richiedere il PIN.
 
 Nella finestra:
 
@@ -108,6 +110,8 @@ Implementato:
   riutilizzabile dalla futura anteprima Qt e con cleanup deterministico.
 - prima dashboard PySide6/Fluent con navigazione, modello `QTableView`, ricerca
   differita, filtro per persona, selezione stabile e scansione in worker Qt.
+- pagina impostazioni Qt completa, persistenza atomica, discovery DLL in worker
+  e scelta guidata di middleware e certificato pubblico.
 
 Rimandato fino ai test reali: tray, menu di Esplora file, anteprima grafica,
 destinazione separata, pacchetto autonomo con installer Windows e provider

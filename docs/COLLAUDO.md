@@ -30,6 +30,8 @@ La suite copre:
 - integrazione dell'aspetto su firma, co-firma e pagine ruotate 0/90/180/270.
 - smoke test Qt offscreen, modello tabellare con 1.000 documenti, filtro per
   persona/testo, selezione stabile, debounce, stati rete e scanner su thread Qt.
+- form impostazioni Qt, validazione e roundtrip senza PIN, associazione `CKA_ID`,
+  modelli/dialoghi di scelta e discovery eseguita fuori dal thread GUI.
 
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.

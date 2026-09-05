@@ -1,6 +1,6 @@
 # Specifica di implementazione dell'interfaccia mFirma
 
-> Stato: approvata; passi 1 e 2 avviati con dashboard Qt eseguibile e testata
+> Stato: approvata; passi 1, 2 e 3 implementati con GUI Qt eseguibile e testata
 >
 > Destinatario: Codex o altro agente incaricato dell'implementazione
 >
@@ -625,9 +625,14 @@ navigazione, dashboard, `QTableView`, modello astratto, proxy di filtro,
 selezione per percorso normalizzato, ricerca differita e scansione tramite
 `QThreadPool`. L'avvio di sviluppo è `python -m mfirma --qt-dashboard`.
 
-Restano intenzionalmente sulla GUI stabile impostazioni modificabili, discovery,
-anteprima, PIN, firma, avanzamento, esito e tray. La GUI Qt diventerà predefinita
-soltanto dopo la copertura di questo flusso.
+La pagina impostazioni Qt salva tutti i valori correnti tramite
+`ConfigRepository`. Discovery e lettura card usano un worker Qt che richiama il
+probe isolato esistente; i dialoghi mostrano dati pubblici reali e conservano la
+scelta per etichetta e `CKA_ID`.
+
+Restano intenzionalmente sulla GUI stabile anteprima, PIN, firma, avanzamento,
+esito e tray. La GUI Qt diventerà predefinita soltanto dopo la copertura di
+questo flusso.
 
 ## 20. Test UI minimi
 
