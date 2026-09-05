@@ -27,7 +27,7 @@ from qfluentwidgets import (
 )
 
 from ...config import AppConfig
-from ...discovery import ModuleCandidate
+from ...discovery import CertificateCandidate, ModuleCandidate
 
 
 class _SettingsSection(QFrame):
@@ -62,6 +62,7 @@ class SettingsPage(QWidget):
         self.setObjectName("settingsPage")
         self._loaded_config = deepcopy(config)
         self._certificate_ids_by_label: dict[str, str] = {}
+        self._certificate_details_by_label: dict[str, CertificateCandidate] = {}
         self._certificate_id_module_path = ""
         self._build_ui()
         self.load_config(config)
@@ -221,6 +222,7 @@ class SettingsPage(QWidget):
         self.location.setText(config.signature.location)
         self.output_suffix.setText(config.output.suffix)
         self._certificate_ids_by_label = {}
+        self._certificate_details_by_label = {}
         self._certificate_id_module_path = ""
         if config.pkcs11.certificate_label and config.pkcs11.certificate_id:
             self._certificate_ids_by_label[config.pkcs11.certificate_label] = (
@@ -263,6 +265,9 @@ class SettingsPage(QWidget):
     def apply_module_candidate(self, candidate: ModuleCandidate) -> bool:
         self.module_path.setText(str(candidate.path))
         self._certificate_ids_by_label = dict(candidate.certificate_ids)
+        self._certificate_details_by_label = {
+            certificate.label: certificate for certificate in candidate.certificates
+        }
         self._certificate_id_module_path = str(candidate.path)
         current_token = self.token_label.text().strip()
         if (
@@ -322,3 +327,9 @@ class SettingsPage(QWidget):
     def selected_module_path(self) -> Path | None:
         value = self.module_path.text().strip()
         return Path(value) if value else None
+
+    @property
+    def selected_certificate_details(self) -> CertificateCandidate | None:
+        return self._certificate_details_by_label.get(
+            self.certificate_label.text().strip()
+        )

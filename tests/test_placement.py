@@ -1,7 +1,14 @@
 import pytest
 
-from mfirma.models import PageGeometry
-from mfirma.placement import calculate_placement
+from mfirma.models import DisplayRect, PageGeometry
+from mfirma.placement import (
+    calculate_display_rect,
+    calculate_placement,
+    constrain_display_rect,
+    display_page_size,
+    display_rect_from_placement,
+    placement_from_display_rect,
+)
 
 
 @pytest.mark.parametrize("rotation", [0, 90, 180, 270])
@@ -34,3 +41,60 @@ def test_rejects_box_that_does_not_fit():
             height=20,
         )
 
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_custom_display_rect_roundtrips_for_all_rotations(rotation):
+    geometry = PageGeometry(10, 20, 610, 820, rotation)
+    rect = DisplayRect(31.5, 42.25, 190.0, 68.0)
+
+    placement = placement_from_display_rect(
+        geometry,
+        page_index=3,
+        rect=rect,
+    )
+
+    assert display_rect_from_placement(geometry, placement) == rect
+    assert placement.page_index == 3
+    expected_size = (600, 800) if rotation in (0, 180) else (800, 600)
+    assert display_page_size(geometry) == expected_size
+
+
+def test_display_rect_is_constrained_inside_crop_box():
+    geometry = PageGeometry(0, 0, 300, 200)
+
+    result = constrain_display_rect(
+        geometry,
+        DisplayRect(280, -20, 100, 90),
+        minimum_width=60,
+        minimum_height=30,
+    )
+
+    assert result == DisplayRect(200, 0, 100, 90)
+    with pytest.raises(ValueError, match="interamente"):
+        placement_from_display_rect(
+            geometry,
+            page_index=0,
+            rect=DisplayRect(280, -20, 100, 90),
+        )
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+def test_preset_display_rect_matches_pdf_placement(rotation):
+    geometry = PageGeometry(10, 20, 610, 820, rotation)
+    rect = calculate_display_rect(
+        geometry,
+        preset="top_right",
+        margin=24,
+        width=190,
+        height=68,
+    )
+    placement = calculate_placement(
+        geometry,
+        page_index=0,
+        preset="top_right",
+        margin=24,
+        width=190,
+        height=68,
+    )
+
+    assert display_rect_from_placement(geometry, placement) == rect

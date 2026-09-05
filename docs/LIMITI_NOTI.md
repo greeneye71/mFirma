@@ -9,15 +9,13 @@ completo continua a usare Tkinter.
 - avvio automatico con Windows;
 - istanza singola e inoltro da una seconda invocazione;
 - menu contestuale di Esplora file;
-- anteprima grafica della pagina;
-- trascinamento e ridimensionamento manuale del riquadro;
 - destinazione separata con conservazione dell'albero relativo;
 - cronologia, log rotanti ed esportazione del riepilogo;
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza
   Python; è disponibile soltanto lo script locale `installa_mFirma.cmd`;
 - provider Windows CSP/CNG;
 - TSA e profili PAdES B-T, B-LT e B-LTA;
-- nella dashboard Qt: anteprima, PIN, firma, avanzamento, esito e tray;
+- nella dashboard Qt: PIN, firma, avanzamento, esito e tray;
 
 ## Limiti operativi
 

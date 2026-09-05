@@ -44,8 +44,8 @@ GUI Tkinter ───────> BatchOrchestrator
 | `pdf_service.py` | Campo visibile, PAdES B-B e verifica della nuova firma |
 | `appearance.py` | Modello e rendering vettoriale dell'aspetto, indipendente dalla GUI |
 | `ui/models/` | Modelli Qt per documenti, middleware e certificati |
-| `ui/workers/` | Scanner e discovery fuori dal thread grafico, con segnali strutturati |
-| `ui/pages/` | Dashboard, impostazioni operative e cronologia vuota non simulata |
+| `ui/workers/` | Scanner, discovery e preparazione anteprima fuori dal thread grafico |
+| `ui/pages/` | Dashboard, impostazioni, anteprima PDF e cronologia non simulata |
 | `ui/dialogs/` | Scelta confermata di middleware e certificato pubblico |
 | `ui/main_window.py` | `MSFluentWindow`, navigazione e coordinamento Qt |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
@@ -155,9 +155,17 @@ dialoghi dedicati; la scelta confermata conserva il `CKA_ID` pubblico insieme
 all'etichetta. `SettingsPage` costruisce un `AppConfig` validato, poi la finestra
 lo salva atomicamente tramite `ConfigRepository`.
 
-La modalità Qt non esegue ancora firma, PIN o anteprima. Per questo non è il
-punto d'ingresso predefinito e non duplica il flusso completo Tkinter. Il
-passaggio definitivo avverrà soltanto quando tali casi d'uso saranno coperti.
+`PreviewController` legge CropBox, rotazione e firme esistenti fuori dal thread
+grafico. Genera il PDF vettoriale dell'aspetto con lo stesso renderer della
+firma, ne legge i byte e rimuove subito il temporaneo. `PreviewPage` affida a
+`QPdfDocument/QPdfView` sia la pagina sorgente sia la rasterizzazione a 400% del
+piccolo PDF vettoriale per lo schermo. L'overlay converte i movimenti in
+`DisplayRect` espressi in punti e poi in `SignaturePlacement`; nessun pixel UI
+entra nel piano di firma.
+
+La modalità Qt non esegue ancora firma o PIN. Per questo non è il punto
+d'ingresso predefinito e non duplica il flusso completo Tkinter. Il passaggio
+definitivo avverrà soltanto quando tali casi d'uso saranno coperti.
 
 ## Confini intenzionali
 

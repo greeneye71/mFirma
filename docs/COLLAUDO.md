@@ -32,6 +32,9 @@ La suite copre:
   persona/testo, selezione stabile, debounce, stati rete e scanner su thread Qt.
 - form impostazioni Qt, validazione e roundtrip senza PIN, associazione `CKA_ID`,
   modelli/dialoghi di scelta e discovery eseguita fuori dal thread GUI.
+- anteprima `QPdfView` con PDF reali, renderer condiviso, cleanup, CropBox,
+  rotazioni 0/90/180/270, preset, zoom, trascinamento, ridimensionamento e
+  coordinate normalizzate tra pagine diverse.
 
 Il certificato software creato dai test è esclusivamente una fixture effimera e
 non può essere usato dalla build applicativa.

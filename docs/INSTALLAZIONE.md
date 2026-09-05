@@ -86,7 +86,8 @@ Per provare la dashboard Qt durante la migrazione:
 
 La pagina `Impostazioni` della modalità Qt è operativa e permette di salvare la
 configurazione, rilevare il middleware e leggere i certificati pubblici della
-card. Anteprima e firma restano temporaneamente nell'avvio standard.
+card. Anche l'anteprima PDF e il posizionamento sono disponibili; PIN e firma
+restano temporaneamente nell'avvio standard.
 
 La firma resta disponibile nell'avvio standard senza tale opzione.
 

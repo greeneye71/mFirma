@@ -1,6 +1,6 @@
 # Specifica dell'aspetto visibile della firma PDF
 
-> Stato: renderer e integrazione PDF implementati; anteprima Qt da implementare
+> Stato: renderer, integrazione PDF e anteprima Qt implementati
 >
 > Ambito: contenuto grafico del campo firma, anteprima e generazione vettoriale
 >
@@ -331,6 +331,8 @@ dimensioni predefinite sono 240 × 92 pt e 190 × 68 pt. Il temporaneo è gestit
 da un context manager e viene rimosso anche quando la firma genera un errore.
 La resa completa è stata ispezionata a 960 × 368 pixel, equivalente al 400%.
 
-Restano da completare l'anteprima Qt basata sul medesimo PDF generato e le prove
-di stampa/scaling sui documenti reali; questi limiti non incidono sul contenuto
-vettoriale già applicato ai PDF firmati.
+L'anteprima Qt usa il medesimo PDF generato dal renderer e lo rasterizza tramite
+`QPdfDocument` a 400% per la sola visualizzazione a schermo. Il temporaneo viene
+rimosso nel worker prima di consegnare i byte alla GUI. Restano da completare le
+prove di stampa/scaling sui documenti reali; questo limite non incide sul
+contenuto vettoriale applicato ai PDF firmati.

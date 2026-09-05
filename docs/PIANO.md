@@ -49,10 +49,11 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
   scanner Qt: **implementati in modalità di migrazione `--qt-dashboard`**;
 - impostazioni, persistenza, discovery Qt e scelta del certificato pubblico:
   **implementati e testati senza hardware**;
-- prossimo incremento: pagina di anteprima basata su `QPdfDocument`,
-  `QPdfView` e sul renderer dell'aspetto già disponibile;
+- anteprima `QPdfDocument/QPdfView`, overlay condiviso, zoom, preset,
+  trascinamento e ridimensionamento: **implementati e testati**;
+- prossimo incremento: dialogo PIN effimero, worker del `BatchOrchestrator`,
+  avanzamento reale, annullamento ed esito;
 - icona tray e avvio per utente;
-- anteprima della pagina con rettangolo spostabile;
 - selezione del token quando più dispositivi sono collegati;
 - istanza singola, launcher e selezione multipla da Esplora file;
 - log rotanti e cronologia locale.

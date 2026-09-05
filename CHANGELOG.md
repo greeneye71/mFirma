@@ -2,6 +2,14 @@
 
 ## Non rilasciato
 
+- aggiunta la pagina Qt `Controlla e firma` basata su `QPdfDocument` e
+  `QPdfView`, con ultima pagina reale, navigazione tra documenti e zoom;
+- l'aspetto vettoriale condiviso viene rasterizzato da Qt al 400% solo per lo
+  schermo e sovrapposto come riquadro trascinabile e ridimensionabile;
+- aggiunte conversioni pubbliche tra punti PDF e pagina visualizzata, vincoli
+  CropBox, quattro rotazioni e posizione normalizzata applicabile al batch;
+- preparazione di geometria, numero firma e aspetto spostata in worker Qt con
+  cleanup deterministico prima della consegna alla GUI;
 - resa operativa la pagina impostazioni Qt con tutti i valori persistiti da
   `ConfigRepository`, validazione e nessun campo PIN;
 - migrati nella GUI Qt il rilevamento asincrono dei middleware PKCS#11, il probe

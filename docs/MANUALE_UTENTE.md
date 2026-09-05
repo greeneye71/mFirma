@@ -56,9 +56,16 @@ l'applicazione dal terminale, dalla radice del progetto eseguire:
 
 È disponibile anche una dashboard Qt in migrazione tramite
 `.venv\Scripts\python -m mfirma --qt-dashboard`. Consente scansione, ricerca,
-filtro, impostazioni, rilevamento middleware e lettura della card, ma non avvia
-ancora anteprima e firma: per firmare continuare ad avviare mFirma senza questa
-opzione.
+filtro, impostazioni, rilevamento middleware, lettura card e anteprima PDF, ma
+non avvia ancora PIN e firma: per firmare continuare ad avviare mFirma senza
+questa opzione.
+
+Nella dashboard Qt selezionare uno o più documenti e premere `Prepara la firma`.
+La pagina `Controlla e firma` apre l'ultima pagina del primo PDF. È possibile
+cambiare documento, adattare lo zoom, scegliere uno dei quattro preset e
+trascinare o ridimensionare il riquadro restando all'interno della pagina. La
+data mostrata è dichiaratamente dimostrativa e viene rigenerata durante la
+firma.
 
 ## Configurazione iniziale
 

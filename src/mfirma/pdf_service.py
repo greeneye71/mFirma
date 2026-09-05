@@ -16,7 +16,7 @@ from .models import PageGeometry
 from .placement import calculate_placement
 
 
-def _geometry_and_page(source: Path) -> tuple[PageGeometry, int, int]:
+def read_last_page_geometry(source: Path) -> tuple[PageGeometry, int, int]:
     try:
         from pypdf import PdfReader
 
@@ -98,7 +98,7 @@ def sign_pades(
     from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
     from pyhanko.sign import fields, signers
 
-    geometry, page_index, _ = _geometry_and_page(source)
+    geometry, page_index, _ = read_last_page_geometry(source)
     placement = calculate_placement(
         geometry,
         page_index=page_index,

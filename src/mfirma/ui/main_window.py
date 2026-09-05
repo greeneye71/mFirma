@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, Slot
@@ -11,6 +12,7 @@ from ..discovery import ModuleCandidate
 from ..scanner import ScanResult, candidates_from_paths
 from .dialogs import CertificateSelectionDialog, ModuleSelectionDialog
 from .pages.history_page import HistoryPage
+from .pages.preview_page import PreviewPage
 from .pages.queue_page import QueuePage
 from .pages.settings_page import SettingsPage
 from .state import DeviceState, ScanState
@@ -18,8 +20,14 @@ from .workers import (
     DiscoveryController,
     DiscoveryOperation,
     DiscoveryOutcome,
+    PreviewController,
+    PreviewIdentity,
+    PreviewResult,
     ScanController,
 )
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MFirmaQtWindow(MSFluentWindow):
@@ -29,6 +37,7 @@ class MFirmaQtWindow(MSFluentWindow):
         *,
         scan_controller: ScanController | None = None,
         discovery_controller: DiscoveryController | None = None,
+        preview_controller: PreviewController | None = None,
         auto_scan: bool = True,
     ):
         super().__init__()
@@ -41,7 +50,9 @@ class MFirmaQtWindow(MSFluentWindow):
         self.discovery_controller = discovery_controller or DiscoveryController(
             self
         )
+        self.preview_controller = preview_controller or PreviewController(self)
         self.queue_page = QueuePage(self)
+        self.preview_page = PreviewPage(self)
         self.history_page = HistoryPage(self)
         self.settings_page = SettingsPage(self.config, self)
         self._build_window()
@@ -59,11 +70,19 @@ class MFirmaQtWindow(MSFluentWindow):
         )
         self.addSubInterface(self.history_page, FluentIcon.HISTORY, "Cronologia")
         self.addSubInterface(self.settings_page, FluentIcon.SETTING, "Impostazioni")
+        self.stackedWidget.addWidget(self.preview_page)
 
     def _connect_services(self) -> None:
         self.queue_page.refreshRequested.connect(self.refresh_documents)
         self.queue_page.addFilesRequested.connect(self.add_files)
-        self.queue_page.prepareRequested.connect(self._show_migration_boundary)
+        self.queue_page.prepareRequested.connect(self.open_preview)
+        self.preview_page.backRequested.connect(
+            lambda: self.switchTo(self.queue_page)
+        )
+        self.preview_page.documentRequested.connect(self._prepare_preview)
+        self.preview_page.continueRequested.connect(
+            self._show_signing_migration_boundary
+        )
         self.settings_page.saveRequested.connect(self.save_settings)
         self.settings_page.browseRootRequested.connect(self.choose_monitor_root)
         self.settings_page.browseModuleRequested.connect(self.choose_module)
@@ -81,6 +100,11 @@ class MFirmaQtWindow(MSFluentWindow):
             self._discovery_succeeded
         )
         self.discovery_controller.operationFailed.connect(self._discovery_failed)
+        self.preview_controller.previewStarted.connect(
+            lambda _document: self.preview_page.set_busy(True)
+        )
+        self.preview_controller.previewSucceeded.connect(self._preview_succeeded)
+        self.preview_controller.previewFailed.connect(self._preview_failed)
 
     def _update_operational_status(self) -> None:
         config = self.config.pkcs11
@@ -229,8 +253,9 @@ class MFirmaQtWindow(MSFluentWindow):
 
     @Slot(object, str)
     def _discovery_failed(
-        self, operation: DiscoveryOperation, _technical_message: str
+        self, operation: DiscoveryOperation, technical_message: str
     ) -> None:
+        LOGGER.warning("Discovery %s non riuscita: %s", operation, technical_message)
         if operation is DiscoveryOperation.DISCOVER:
             message = (
                 "Il rilevamento del middleware non è riuscito. "
@@ -254,6 +279,7 @@ class MFirmaQtWindow(MSFluentWindow):
             QMessageBox.warning(self, "Impostazioni", str(exc))
             return
         except Exception:
+            LOGGER.exception("Salvataggio della configurazione Qt non riuscito")
             message = "Non è stato possibile salvare le impostazioni."
             self.settings_page.save_status.setText(message)
             QMessageBox.warning(self, "Impostazioni", message)
@@ -263,6 +289,61 @@ class MFirmaQtWindow(MSFluentWindow):
         self._update_operational_status()
         self.queue_page.folder_status.set_status(
             "Da aggiornare", "Le nuove impostazioni sono state salvate"
+        )
+
+    @Slot(object)
+    def open_preview(self, documents) -> None:
+        selected = tuple(documents)
+        if not selected:
+            return
+        self.preview_page.set_documents(
+            selected,
+            self.config.pkcs11.certificate_label,
+        )
+        self.switchTo(self.preview_page)
+        self._prepare_preview(0)
+
+    @Slot(int)
+    def _prepare_preview(self, index: int) -> None:
+        documents = self.preview_page.documents
+        if not 0 <= index < len(documents):
+            return
+        details = self.settings_page.selected_certificate_details
+        identity = PreviewIdentity(
+            certificate_label=self.config.pkcs11.certificate_label,
+            subject=details.subject if details else "",
+            issuer=details.issuer if details else "",
+        )
+        self.preview_controller.prepare(
+            documents[index],
+            self.config.signature,
+            identity,
+        )
+
+    @Slot(object)
+    def _preview_succeeded(self, result: PreviewResult) -> None:
+        try:
+            self.preview_page.load_preview(result)
+        except ValueError as exc:
+            self.preview_page.set_error(str(exc))
+        except Exception:
+            LOGGER.exception(
+                "Visualizzazione anteprima non riuscita per %s",
+                result.document.source,
+            )
+            self.preview_page.set_error(
+                "Il documento non può essere mostrato nell’anteprima."
+            )
+
+    @Slot(object, str)
+    def _preview_failed(self, document, technical_message: str) -> None:
+        LOGGER.warning(
+            "Preparazione anteprima non riuscita per %s: %s",
+            document.source,
+            technical_message,
+        )
+        self.preview_page.set_error(
+            "Il PDF non può essere preparato per l’anteprima. Controlla il documento."
         )
 
     @Slot()
@@ -290,17 +371,18 @@ class MFirmaQtWindow(MSFluentWindow):
         )
 
     @Slot(object)
-    def _show_migration_boundary(self, documents) -> None:
+    def _show_signing_migration_boundary(self, _placements) -> None:
         QMessageBox.information(
             self,
-            "Controlla e firma",
-            f"Hai selezionato {len(documents)} documenti.\n\n"
-            "Anteprima, PIN e firma saranno collegati alla nuova interfaccia "
-            "nel prossimo incremento. Per firmare ora usa l'interfaccia stabile "
+            "Firma pronta",
+            f"Hai preparato {len(self.preview_page.documents)} documenti.\n\n"
+            "PIN, avanzamento e firma saranno collegati alla nuova interfaccia "
+            "nel prossimo incremento. Per firmare ora usa l’interfaccia stabile "
             "avviando mFirma senza --qt-dashboard.",
         )
 
     def wait_for_workers(self, timeout_ms: int = 3000) -> bool:
         scan_done = self.scan_controller.wait_for_done(timeout_ms)
         discovery_done = self.discovery_controller.wait_for_done(timeout_ms)
-        return scan_done and discovery_done
+        preview_done = self.preview_controller.wait_for_done(timeout_ms)
+        return scan_done and discovery_done and preview_done

@@ -15,6 +15,9 @@
   ancora collegato alla nuova UI.
 - Il worker discovery Qt conserva l'isolamento esistente: non carica la DLL nel
   processo grafico e non effettua autenticazione sul token.
+- Il worker di anteprima legge soltanto il PDF sorgente e produce in memoria i
+  byte dell'aspetto dopo aver eliminato deterministicamente il temporaneo; la
+  pagina Qt non scrive né modifica il documento mostrato.
 - L'applicazione elimina i propri riferimenti al PIN appena terminato il batch.
 - Python non può garantire l'azzeramento di tutte le copie in memoria.
 - Se il middleware offre un dialogo protetto, l'utente può lasciare vuoto il

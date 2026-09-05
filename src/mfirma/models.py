@@ -38,6 +38,16 @@ class SignaturePlacement:
     y2: float
 
 
+@dataclass(frozen=True, slots=True)
+class DisplayRect:
+    """Rettangolo in punti sulla pagina visualizzata, con origine in basso a sinistra."""
+
+    x: float
+    y: float
+    width: float
+    height: float
+
+
 @dataclass(slots=True)
 class SignJob:
     document: DocumentCandidate
@@ -62,4 +72,3 @@ class PageGeometry:
     @property
     def height(self) -> float:
         return self.upper_right_y - self.lower_left_y
-

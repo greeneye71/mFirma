@@ -1,6 +1,6 @@
 # Specifica di implementazione dell'interfaccia mFirma
 
-> Stato: approvata; passi 1, 2 e 3 implementati con GUI Qt eseguibile e testata
+> Stato: approvata; passi da 1 a 4 implementati con GUI Qt eseguibile e testata
 >
 > Destinatario: Codex o altro agente incaricato dell'implementazione
 >
@@ -630,9 +630,14 @@ La pagina impostazioni Qt salva tutti i valori correnti tramite
 probe isolato esistente; i dialoghi mostrano dati pubblici reali e conservano la
 scelta per etichetta e `CKA_ID`.
 
-Restano intenzionalmente sulla GUI stabile anteprima, PIN, firma, avanzamento,
-esito e tray. La GUI Qt diventerà predefinita soltanto dopo la copertura di
-questo flusso.
+La pagina `Controlla e firma` usa `QPdfDocument/QPdfView` sull'ultima pagina,
+mostra il PDF prodotto dal renderer condiviso, gestisce zoom, preset,
+trascinamento e ridimensionamento. Le coordinate persistenti del flusso sono
+punti PDF convertiti da `placement.py`, inclusi CropBox e rotazioni.
+
+Restano intenzionalmente sulla GUI stabile PIN, firma, avanzamento, esito e
+tray. La GUI Qt diventerà predefinita soltanto dopo la copertura di questo
+flusso.
 
 ## 20. Test UI minimi
 
