@@ -67,9 +67,11 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 - istanza singola, launcher leggero, IPC per utente, import asincrono e verbo
   classico di Esplora file: **implementati e testati automaticamente**; resta il
   collaudo manuale con 1, 50 e 100 selezioni su Windows 11;
-- prossimo incremento: cronologia locale basata soltanto su esiti persistiti;
-- log rotanti con accesso dal riepilogo: **implementati**; cronologia locale da
-  implementare.
+- cronologia locale degli ultimi 100 batch reali, con dettaglio ricostruibile e
+  persistenza atomica fuori dal thread GUI: **implementata e testata**;
+- log rotanti con accesso dal riepilogo: **implementati**;
+- prossimo incremento: destinazione separata con conservazione dell'albero
+  relativo, da chiudere come confine verticale prima del packaging.
 
 ### 4. Pilot
 

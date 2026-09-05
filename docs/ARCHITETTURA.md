@@ -38,11 +38,12 @@ Cartella / scelta file
 | `scanner.py` | Ricerca PDF, associazione alla persona, esclusioni e stabilità |
 | `models.py` | Oggetti di dominio e stati dei job |
 | `batch.py` | Deduplicazione, firma seriale, annullamento ed esiti indipendenti |
+| `history.py` | Modello, validazione, retention e persistenza atomica della cronologia |
 | `provider.py` | Apertura e chiusura della sessione PKCS#11 |
 | `pdf_service.py` | Campo visibile, PAdES B-B e verifica della nuova firma |
 | `appearance.py` | Modello e rendering vettoriale dell'aspetto, indipendente dalla GUI |
-| `ui/models/` | Modelli Qt per documenti, middleware e certificati |
-| `ui/workers/` | Scanner, discovery, anteprima e batch di firma fuori dal thread grafico |
+| `ui/models/` | Modelli Qt per documenti, middleware, certificati e cronologia |
+| `ui/workers/` | Scanner, discovery, anteprima, cronologia e batch fuori dal thread grafico |
 | `ui/pages/` | Dashboard, impostazioni, anteprima, avanzamento, esito e cronologia non simulata |
 | `ui/dialogs/` | Scelta di middleware/certificato e acquisizione effimera del PIN |
 | `ui/main_window.py` | `MSFluentWindow`, navigazione, tray e coordinamento Qt |
@@ -178,6 +179,14 @@ dall'anteprima contiene coordinate PDF per singolo documento oppure un
 rettangolo normalizzato condiviso. `ProgressPage` mostra gli eventi reali e
 `ResultPage` espone solo messaggi utente classificati, non le eccezioni tecniche.
 
+Al termine di ogni batch che produce esiti definitivi, la finestra costruisce
+un `BatchHistoryRecord` e `HistoryController` lo salva fuori dal thread GUI.
+`HistoryRepository` conserva in `history.json` gli ultimi 100 batch mediante
+sostituzione atomica. Ogni record contiene data con offset, etichetta pubblica
+del certificato, ID batch e dati necessari a ricostruire il riepilogo; non
+contiene il messaggio tecnico del middleware. La pagina `Cronologia` mostra
+solo i record restituiti dall'archivio e non genera righe dimostrative.
+
 All'avvio `logging_setup.py` configura un file UTF-8 da 1 MiB con cinque copie
 in `%LOCALAPPDATA%\mFirma\logs`. Il batch registra tipo, codice e dettaglio
 tecnico degli errori dopo avere sostituito ogni occorrenza del PIN con
@@ -186,7 +195,7 @@ problemi, la UI mostra il percorso e consente di aprire direttamente il log.
 
 `SystemTrayController` mantiene attiva l'applicazione quando la finestra viene
 chiusa. `Esci` avvia uno shutdown non bloccante: richiede al batch di annullarsi
-dopo il file corrente, attende scanner, discovery, anteprima e firma tramite un
+dopo il file corrente, attende scanner, discovery, anteprima, cronologia e firma tramite un
 timer Qt, quindi nasconde il tray e termina l'event loop. La GUI Tkinter e il
 relativo adattatore sono stati rimossi.
 

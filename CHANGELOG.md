@@ -2,6 +2,11 @@
 
 ## Non rilasciato
 
+- aggiunto l'archivio locale, atomico e versionato degli ultimi 100 batch reali;
+- completata la pagina `Cronologia` con riepilogo, dettaglio per documento e
+  copia dell'identificativo batch;
+- spostati caricamento e salvataggio della cronologia fuori dal thread GUI e
+  esclusi messaggi tecnici e segreti dal formato persistito;
 - aggiunti istanza singola per utente e protocollo locale versionato, limitato a
   100 percorsi PDF e 256 KiB senza comandi arbitrari;
 - aggiunto un launcher leggero che inoltra i file alla finestra aperta o avvia

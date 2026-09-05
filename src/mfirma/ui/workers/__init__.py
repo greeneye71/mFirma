@@ -3,6 +3,7 @@ from .discovery_worker import (
     DiscoveryOperation,
     DiscoveryOutcome,
 )
+from .history_worker import HistoryController
 from .preview_worker import (
     PreviewController,
     PreviewIdentity,
@@ -17,6 +18,7 @@ __all__ = [
     "DiscoveryOperation",
     "DiscoveryOutcome",
     "FileImportController",
+    "HistoryController",
     "PreviewController",
     "PreviewIdentity",
     "PreviewResult",

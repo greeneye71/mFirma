@@ -71,6 +71,15 @@ middleware possono comunque contenere dati personali. Il log deve quindi
 restare nel profilo locale dell'utente ed essere controllato e redatto prima
 della condivisione.
 
+La cronologia è un archivio distinto in
+`%LOCALAPPDATA%\mFirma\history.json`. Conserva percorsi dei documenti e degli
+output riusciti, persona ricavata dalla cartella, etichetta pubblica del
+certificato, stato e codice classificato dell'errore. Non conserva PIN,
+eccezioni o messaggi tecnici grezzi. È limitata agli ultimi 100 batch, validata
+in lettura e aggiornata mediante sostituzione atomica in un worker Qt. Poiché i
+percorsi possono essere dati personali, il file non deve essere condiviso
+senza verifica e può essere eliminato a programma chiuso.
+
 ## Dipendenze
 
 Le dipendenze sono bloccate in `requirements.lock`. Prima di distribuire una

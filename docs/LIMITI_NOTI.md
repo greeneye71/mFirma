@@ -6,7 +6,7 @@
 - menu contestuale moderno di Windows 11; è disponibile il verbo classico, che
   può comparire sotto `Mostra altre opzioni`;
 - destinazione separata con conservazione dell'albero relativo;
-- cronologia persistente ed esportazione strutturata del riepilogo;
+- esportazione strutturata del riepilogo e ricerca nella cronologia;
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza
   Python; è disponibile soltanto lo script locale `installa_mFirma.cmd`;
 - provider Windows CSP/CNG;

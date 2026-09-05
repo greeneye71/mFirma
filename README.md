@@ -140,6 +140,9 @@ Implementato:
 - istanza singola per utente, launcher leggero e canale locale versionato per
   ricevere fino a 100 PDF da linea di comando o dal verbo classico di Esplora;
   importazione asincrona e selezione senza firma automatica.
+- cronologia locale degli ultimi 100 batch, con data e fuso, certificato,
+  conteggi, esito e dettaglio per documento; il salvataggio è atomico e non
+  contiene PIN o messaggi tecnici grezzi.
 
 Rimandato: menu moderno di Esplora file, destinazione separata, pacchetto
 autonomo con installer Windows e provider CSP/CNG. Questi punti sono pianificati in

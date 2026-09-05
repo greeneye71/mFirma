@@ -119,7 +119,18 @@ Annotare se il comando appare nel menu principale o sotto `Mostra altre
 opzioni`. Finché questa prova non è registrata, la selezione multipla shell non
 è dichiarata collaudata.
 
-### 6. Errori controllati
+### 6. Cronologia
+
+1. completare un batch con almeno un successo e uno con un errore controllato;
+2. riavviare l'app e verificare che entrambi compaiano in ordine dal più recente;
+3. selezionare ciascun batch e confrontare il dettaglio con il riepilogo finale;
+4. copiare l'ID batch e verificare che corrisponda a quello mostrato;
+5. controllare `history.json` e verificare che non contenga PIN o messaggi
+   tecnici del middleware;
+6. rendere temporaneamente il file non leggibile e verificare che la firma resti
+   disponibile e che l'errore sia registrato nel log.
+
+### 7. Errori controllati
 
 - token assente prima dell'avvio;
 - token rimosso tra due file;

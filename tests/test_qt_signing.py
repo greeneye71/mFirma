@@ -179,7 +179,9 @@ def test_result_page_sanitizes_technical_errors_and_filters_problems(qtbot, work
 def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir):
     document = _candidate(workdir / "documento.pdf")
     repository = ConfigRepository(workdir / "config.json")
-    repository.save(AppConfig())
+    config = AppConfig()
+    config.pkcs11.certificate_label = "Certificato simulato"
+    repository.save(config)
     window = MFirmaQtWindow(repository, auto_scan=False)
     qtbot.addWidget(window)
     window.preview_page.set_documents((document,), "Certificato simulato")
@@ -203,6 +205,16 @@ def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir):
     assert (
         window.progress_page.progress_bar.accessibleDescription()
         == "1 di 1 documenti completati"
+    )
+    qtbot.waitUntil(
+        lambda: (workdir / "history.json").exists()
+        and not window.history_controller.busy,
+        timeout=3000,
+    )
+    assert window.history_page.model.rowCount() == 1
+    assert (
+        window.history_page.model.records[0].certificate_label
+        == "Certificato simulato"
     )
     assert window.wait_for_workers()
 

@@ -26,12 +26,20 @@ _ERROR_MESSAGES = {
 }
 
 
-def user_message(job: SignJob) -> str:
-    if job.status is JobStatus.SUCCEEDED:
+def status_label(status: JobStatus) -> str:
+    return _STATUS_LABELS[status]
+
+
+def status_user_message(status: JobStatus, error_code: str | None) -> str:
+    if status is JobStatus.SUCCEEDED:
         return "Firma completata"
-    if job.status is JobStatus.CANCELLED:
+    if status is JobStatus.CANCELLED:
         return "Non iniziato per annullamento richiesto"
-    return _ERROR_MESSAGES.get(job.error_code or "", "Operazione non riuscita.")
+    return _ERROR_MESSAGES.get(error_code or "", "Operazione non riuscita.")
+
+
+def user_message(job: SignJob) -> str:
+    return status_user_message(job.status, job.error_code)
 
 
 class BatchResultModel(QAbstractTableModel):
@@ -70,7 +78,7 @@ class BatchResultModel(QAbstractTableModel):
         values = (
             job.document.source.name,
             job.document.person or "—",
-            _STATUS_LABELS[job.status],
+            status_label(job.status),
             str(job.destination) if job.status is JobStatus.SUCCEEDED else "—",
             user_message(job),
         )

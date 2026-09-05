@@ -18,6 +18,7 @@ from qfluentwidgets import FluentIcon, MSFluentWindow
 from ..batch import BatchOrchestrator
 from ..config import AppConfig, ConfigRepository
 from ..discovery import ModuleCandidate
+from ..history import BatchHistoryRecord, HistoryRepository
 from ..models import SignaturePositionPlan
 from ..provider import Pkcs11SigningProvider, SigningProvider
 from ..scanner import ImportResult, ScanResult
@@ -45,6 +46,7 @@ from .workers import (
     DiscoveryOperation,
     DiscoveryOutcome,
     FileImportController,
+    HistoryController,
     PreviewController,
     PreviewIdentity,
     PreviewResult,
@@ -65,6 +67,7 @@ class MFirmaQtWindow(MSFluentWindow):
         *,
         scan_controller: ScanController | None = None,
         import_controller: FileImportController | None = None,
+        history_controller: HistoryController | None = None,
         discovery_controller: DiscoveryController | None = None,
         preview_controller: PreviewController | None = None,
         signing_controller: SigningController | None = None,
@@ -87,6 +90,9 @@ class MFirmaQtWindow(MSFluentWindow):
         )
         self.scan_controller = scan_controller or ScanController(self)
         self.import_controller = import_controller or FileImportController(self)
+        self.history_controller = history_controller or HistoryController(
+            HistoryRepository(self.repository.path.with_name("history.json")), self
+        )
         self.discovery_controller = discovery_controller or DiscoveryController(
             self
         )
@@ -103,6 +109,7 @@ class MFirmaQtWindow(MSFluentWindow):
         self._hide_notification_shown = False
         self._restore_maximized = False
         self._pending_import_paths: dict[str, Path] = {}
+        self._active_certificate_label = ""
         self._shutdown_timer = QTimer(self)
         self._shutdown_timer.setInterval(100)
         self._shutdown_timer.timeout.connect(self._poll_shutdown)
@@ -118,6 +125,7 @@ class MFirmaQtWindow(MSFluentWindow):
         self._update_operational_status()
         if auto_scan and self.config.monitor.root:
             QTimer.singleShot(0, self.refresh_documents)
+        QTimer.singleShot(0, self._load_history)
 
     def _build_window(self) -> None:
         self.setWindowTitle("mFirma — Firma PDF")
@@ -185,6 +193,8 @@ class MFirmaQtWindow(MSFluentWindow):
         self.scan_controller.scanFailed.connect(self._scan_failed)
         self.import_controller.importSucceeded.connect(self._import_succeeded)
         self.import_controller.importFailed.connect(self._import_failed)
+        self.history_controller.historyChanged.connect(self.history_page.set_records)
+        self.history_controller.operationFailed.connect(self._history_failed)
         self.discovery_controller.busyChanged.connect(
             self.settings_page.set_discovery_busy
         )
@@ -534,6 +544,20 @@ class MFirmaQtWindow(MSFluentWindow):
         )
         self._start_pending_import()
 
+    @Slot()
+    def _load_history(self) -> None:
+        self.history_page.set_loading()
+        self.history_controller.load()
+
+    @Slot(str, str)
+    def _history_failed(self, operation: str, technical_message: str) -> None:
+        LOGGER.error(
+            "Archivio cronologia non disponibile: operazione=%s dettaglio=%s",
+            operation,
+            technical_message,
+        )
+        self.history_page.set_error()
+
     @Slot(object)
     def request_signing(self, position_plan: SignaturePositionPlan) -> None:
         documents = self.preview_page.documents
@@ -591,15 +615,34 @@ class MFirmaQtWindow(MSFluentWindow):
                 "Firma in corso",
                 "Attendi il completamento del batch già avviato.",
             )
+        else:
+            self._active_certificate_label = self.config.pkcs11.certificate_label
         return started
 
     @Slot(object)
     def _batch_finished(self, jobs) -> None:
         self.result_page.set_jobs(jobs)
         self.switchTo(self.result_page)
+        try:
+            record = BatchHistoryRecord.from_jobs(
+                jobs, certificate_label=self._active_certificate_label
+            )
+        except ValueError as exc:
+            LOGGER.error("Esito batch non archiviabile: %s", exc)
+            self.history_page.set_error()
+        else:
+            LOGGER.info(
+                "Identificativo batch assegnato: id=%s documenti=%d",
+                record.batch_id,
+                len(record.jobs),
+            )
+            self.history_controller.append(record)
+        finally:
+            self._active_certificate_label = ""
 
     @Slot(str)
     def _batch_failed(self, technical_message: str) -> None:
+        self._active_certificate_label = ""
         LOGGER.error("Worker di firma interrotto: %s", technical_message)
         self.switchTo(self.preview_page)
         QMessageBox.warning(
@@ -665,6 +708,7 @@ class MFirmaQtWindow(MSFluentWindow):
             for controller in (
                 self.scan_controller,
                 self.import_controller,
+                self.history_controller,
                 self.discovery_controller,
                 self.preview_controller,
                 self.signing_controller,
@@ -747,11 +791,13 @@ class MFirmaQtWindow(MSFluentWindow):
         scan_done = self.scan_controller.wait_for_done(timeout_ms)
         discovery_done = self.discovery_controller.wait_for_done(timeout_ms)
         import_done = self.import_controller.wait_for_done(timeout_ms)
+        history_done = self.history_controller.wait_for_done(timeout_ms)
         preview_done = self.preview_controller.wait_for_done(timeout_ms)
         signing_done = self.signing_controller.wait_for_done(timeout_ms)
         return (
             scan_done
             and import_done
+            and history_done
             and discovery_done
             and preview_done
             and signing_done

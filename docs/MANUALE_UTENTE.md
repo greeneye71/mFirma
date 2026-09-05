@@ -74,6 +74,19 @@ conteggi e avanzamento. `Annulla dopo il file corrente` non interrompe
 bruscamente il middleware. Al termine il riepilogo distingue riusciti, errori,
 saltati e annullati senza mostrare dettagli tecnici potenzialmente sensibili.
 
+## Cronologia
+
+La sezione `Cronologia` mostra gli ultimi 100 batch effettivamente conclusi e
+salvati sul PC. Per ogni batch sono indicati data e ora con offset, certificato,
+numero di documenti ed esito sintetico. Selezionando una riga si vedono gli
+esiti dei singoli documenti; `Copia ID batch` copia l'identificativo utile per
+correlare una segnalazione con il log.
+
+La cronologia è locale al profilo Windows e non certifica la validità legale
+della firma. Non contiene il PIN né i messaggi tecnici grezzi del middleware.
+Se l'archivio non è leggibile, l'applicazione continua a firmare e segnala il
+problema nella pagina e nel log.
+
 ## Area di notifica e uscita
 
 Il pulsante di chiusura della finestra nasconde mFirma senza interrompere

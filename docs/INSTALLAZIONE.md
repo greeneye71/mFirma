@@ -88,6 +88,11 @@ La GUI permette di salvare la configurazione, rilevare il middleware,
 leggere i certificati pubblici, preparare l'anteprima e completare la firma in
 un worker con avanzamento e riepilogo. Il PIN è effimero e non viene salvato.
 
+Configurazione, stato finestra e cronologia sono conservati nel profilo locale
+dell'utente, normalmente in `%LOCALAPPDATA%\mFirma`. `history.json` contiene
+gli ultimi 100 esiti reali e viene scritto atomicamente; può essere rimosso a
+programma chiuso per azzerare la cronologia senza modificare i PDF.
+
 La GUI Tkinter non fa più parte del progetto. L'opzione `--qt-dashboard` resta
 temporaneamente riconosciuta soltanto per non interrompere vecchi collegamenti.
 
