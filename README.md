@@ -70,6 +70,13 @@ Nella finestra:
 5. controlla l'anteprima e inserisci il PIN. Lascia il PIN vuoto soltanto se il
    middleware usa il proprio dialogo protetto.
 
+Per aggiungere il comando classico `Firma PDF con mFirma` a Esplora file,
+esegui `registra_menu_esplora.cmd`. La registrazione è limitata all'utente
+corrente e può comparire sotto `Mostra altre opzioni` in Windows 11. Il comando
+non firma immediatamente: inoltra fino a 100 PDF alla singola istanza dell'app,
+li seleziona nella dashboard e richiede comunque conferma. Per rimuoverlo usa
+`rimuovi_menu_esplora.cmd`.
+
 Il PIN non viene salvato. I file originali non vengono modificati e un output
 esistente viene saltato.
 
@@ -130,9 +137,12 @@ Implementato:
 - log applicativo rotante in `%LOCALAPPDATA%\mFirma\logs\mfirma.log`, con
   dettagli tecnici sanitizzati e accesso dal riepilogo quando si verifica un
   problema.
+- istanza singola per utente, launcher leggero e canale locale versionato per
+  ricevere fino a 100 PDF da linea di comando o dal verbo classico di Esplora;
+  importazione asincrona e selezione senza firma automatica.
 
-Rimandato: menu di Esplora file, destinazione separata, pacchetto autonomo con
-installer Windows e provider CSP/CNG. Questi punti sono pianificati in
+Rimandato: menu moderno di Esplora file, destinazione separata, pacchetto
+autonomo con installer Windows e provider CSP/CNG. Questi punti sono pianificati in
 [docs/PIANO.md](docs/PIANO.md).
 
 ## Test

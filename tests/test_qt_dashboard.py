@@ -14,7 +14,7 @@ from mfirma.scanner import ScanResult
 from mfirma.ui.main_window import MFirmaQtWindow
 from mfirma.ui.pages.queue_page import QueuePage
 from mfirma.ui.state import ScanState
-from mfirma.ui.workers import ScanController
+from mfirma.ui.workers import FileImportController, ScanController
 
 
 def _candidate(path: Path, person: str) -> DocumentCandidate:
@@ -173,3 +173,27 @@ def test_module_entry_point_routes_qt_by_default(monkeypatch):
 
     assert exit_info.value.code == 0
     assert calls == [["mfirma"]]
+
+
+def test_external_pdf_selection_is_imported_off_thread_and_selected(qtbot, workdir):
+    first = _candidate(workdir / "uno.pdf", "")
+    second = _candidate(workdir / "due.pdf", "")
+    pool = QThreadPool()
+    importer = FileImportController(thread_pool=pool)
+    repository = ConfigRepository(workdir / "config.json")
+    repository.save(AppConfig())
+    window = MFirmaQtWindow(
+        repository,
+        import_controller=importer,
+        tray_available=False,
+        auto_scan=False,
+    )
+    qtbot.addWidget(window)
+
+    with qtbot.waitSignal(importer.importSucceeded, timeout=3000):
+        window.receive_external_paths((first.source, second.source))
+
+    assert len(window.queue_page.model.documents) == 2
+    assert len(window.queue_page.model.selected_documents()) == 2
+    assert window.queue_page.prepare_button.isEnabled()
+    assert window.wait_for_workers()

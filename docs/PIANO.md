@@ -64,8 +64,10 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 - selezione esplicita del token quando più dispositivi sono collegati, con
   seriale pubblico e inventario certificati per dispositivo: **implementata e
   testata senza hardware**;
-- prossimo incremento: istanza singola e selezione multipla da Esplora file;
-- istanza singola, launcher e selezione multipla da Esplora file;
+- istanza singola, launcher leggero, IPC per utente, import asincrono e verbo
+  classico di Esplora file: **implementati e testati automaticamente**; resta il
+  collaudo manuale con 1, 50 e 100 selezioni su Windows 11;
+- prossimo incremento: cronologia locale basata soltanto su esiti persistiti;
 - log rotanti con accesso dal riepilogo: **implementati**; cronologia locale da
   implementare.
 
@@ -77,6 +79,9 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 - prove su share con 1.000 PDF, rete interrotta e copie lente;
 - test su PC pulito con antivirus e policy aziendali;
 - manuale breve e release pilota.
+- opzionale, al termine: valutare la normalizzazione su copia temporanea dei PDF
+  con riferimenti ibridi, soltanto senza firme preesistenti e con confronto del
+  contenuto prima/dopo; non disabilitare semplicemente i controlli rigorosi.
 
 ## Rischi e decisioni aperte
 
@@ -88,7 +93,7 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
 | Co-firma | nuovo campo incrementale | PDF reali e firme/certificazioni pregresse |
 | Output | stessa cartella, `_firmato` | permessi sulla share e politica definitiva |
 | UI | migrazione a PySide6 + PySide6-Fluent-Widgets | accessibilità, scaling, packaging e resa su postazioni reali |
-| Explorer | escluso dalla prima consegna | prova con 1, 50 e 100 percorsi |
+| Explorer | verbo classico per utente; menu moderno rinviato | prova reale con 1, 50 e 100 percorsi |
 
 ## Tracciabilità essenziale
 

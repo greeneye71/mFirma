@@ -3,8 +3,8 @@
 ## Funzioni non ancora implementate
 
 - avvio automatico con Windows;
-- istanza singola e inoltro da una seconda invocazione;
-- menu contestuale di Esplora file;
+- menu contestuale moderno di Windows 11; è disponibile il verbo classico, che
+  può comparire sotto `Mostra altre opzioni`;
 - destinazione separata con conservazione dell'albero relativo;
 - cronologia persistente ed esportazione strutturata del riepilogo;
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza
@@ -28,6 +28,11 @@
   tutti i middleware PKCS#11 esistenti;
 - la richiesta PIN protetta del middleware deve essere provata sul dispositivo;
 - la validazione automatica non determina validità qualificata o legale.
+- la selezione multipla dal verbo classico di Esplora file non è ancora stata
+  collaudata con 1, 50 e 100 PDF su una postazione Windows 11 reale;
+- i PDF con riferimenti incrociati ibridi sono rifiutati in modalità rigorosa;
+  l'eventuale normalizzazione automatica resta un'opzione futura e sarà
+  limitata ai documenti senza firme preesistenti.
 
 ## Stato del supporto
 

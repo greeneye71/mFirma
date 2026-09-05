@@ -235,14 +235,27 @@ class QueuePage(QWidget):
         )
         self._update_empty_state()
 
-    def merge_documents(self, documents: Iterable[DocumentCandidate]) -> None:
+    def merge_documents(
+        self, documents: Iterable[DocumentCandidate], *, select: bool = False
+    ) -> None:
+        imported = tuple(documents)
         merged = {
             normalized_path(document.source): document
             for document in self.model.documents
         }
-        for document in documents:
+        for document in imported:
             merged[normalized_path(document.source)] = document
         self.set_documents(ScanResult(tuple(merged.values()), {}))
+        if select:
+            imported_paths = {
+                normalized_path(document.source) for document in imported
+            }
+            rows = [
+                row
+                for row, document in enumerate(self.model.documents)
+                if normalized_path(document.source) in imported_paths
+            ]
+            self.model.set_selected_rows(rows, True)
 
     def set_scan_state(
         self,

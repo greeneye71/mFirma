@@ -2,6 +2,16 @@
 
 ## Non rilasciato
 
+- aggiunti istanza singola per utente e protocollo locale versionato, limitato a
+  100 percorsi PDF e 256 KiB senza comandi arbitrari;
+- aggiunto un launcher leggero che inoltra i file alla finestra aperta o avvia
+  l'applicazione senza caricare anticipatamente Fluent e il motore di firma;
+- spostata la lettura dei PDF scelti in un worker; i file validi vengono
+  selezionati senza avviare automaticamente la firma;
+- aggiunti script simmetrici per registrare e rimuovere il verbo classico
+  `Firma PDF con mFirma` sotto `HKCU`;
+- documentata come opzione finale la normalizzazione dei PDF ibridi senza firme,
+  mantenendo attivi i controlli rigorosi;
 - aggiunto il log UTF-8 rotante in `%LOCALAPPDATA%\mFirma\logs`, con codice e
   dettaglio tecnico degli errori e riepilogo operativo del batch;
 - aggiunti percorso e pulsante `Apri log errori` nel riepilogo dei batch con

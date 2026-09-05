@@ -1,5 +1,14 @@
 # Risoluzione dei problemi
 
+## Errore “hybrid cross-reference sections”
+
+Il PDF usa riferimenti incrociati ibridi che pyHanko rifiuta in modalità
+rigorosa. Il problema non dipende da token, certificato o PIN. Come soluzione
+temporanea, esportare il documento in un nuovo PDF con un lettore affidabile e
+firmare la copia. La normalizzazione automatica resta un miglioramento
+opzionale finale, limitato ai PDF senza firme preesistenti; i controlli rigorosi
+non verranno semplicemente disattivati.
+
 ## L'applicazione non si avvia
 
 - Eseguire `installa_mFirma.cmd` e leggere l'eventuale errore mostrato.

@@ -20,7 +20,7 @@ from ..config import AppConfig, ConfigRepository
 from ..discovery import ModuleCandidate
 from ..models import SignaturePositionPlan
 from ..provider import Pkcs11SigningProvider, SigningProvider
-from ..scanner import ScanResult, candidates_from_paths
+from ..scanner import ImportResult, ScanResult
 from .dialogs import (
     CertificateSelectionDialog,
     ModuleSelectionDialog,
@@ -44,6 +44,7 @@ from .workers import (
     DiscoveryController,
     DiscoveryOperation,
     DiscoveryOutcome,
+    FileImportController,
     PreviewController,
     PreviewIdentity,
     PreviewResult,
@@ -63,6 +64,7 @@ class MFirmaQtWindow(MSFluentWindow):
         repository: ConfigRepository | None = None,
         *,
         scan_controller: ScanController | None = None,
+        import_controller: FileImportController | None = None,
         discovery_controller: DiscoveryController | None = None,
         preview_controller: PreviewController | None = None,
         signing_controller: SigningController | None = None,
@@ -84,6 +86,7 @@ class MFirmaQtWindow(MSFluentWindow):
             )
         )
         self.scan_controller = scan_controller or ScanController(self)
+        self.import_controller = import_controller or FileImportController(self)
         self.discovery_controller = discovery_controller or DiscoveryController(
             self
         )
@@ -99,6 +102,7 @@ class MFirmaQtWindow(MSFluentWindow):
         self._shutdown_requested = False
         self._hide_notification_shown = False
         self._restore_maximized = False
+        self._pending_import_paths: dict[str, Path] = {}
         self._shutdown_timer = QTimer(self)
         self._shutdown_timer.setInterval(100)
         self._shutdown_timer.timeout.connect(self._poll_shutdown)
@@ -179,6 +183,8 @@ class MFirmaQtWindow(MSFluentWindow):
         )
         self.scan_controller.scanSucceeded.connect(self._scan_succeeded)
         self.scan_controller.scanFailed.connect(self._scan_failed)
+        self.import_controller.importSucceeded.connect(self._import_succeeded)
+        self.import_controller.importFailed.connect(self._import_failed)
         self.discovery_controller.busyChanged.connect(
             self.settings_page.set_discovery_busy
         )
@@ -476,19 +482,57 @@ class MFirmaQtWindow(MSFluentWindow):
         )
         if not names:
             return
-        try:
-            documents = candidates_from_paths([Path(name) for name in names])
-        except Exception:
+        self.enqueue_import_paths(tuple(Path(name) for name in names))
+
+    @Slot(object)
+    def receive_external_paths(self, paths) -> None:
+        self.restore_from_tray()
+        if not self.signing_controller.busy:
+            self.switchTo(self.queue_page)
+        self.enqueue_import_paths(tuple(paths))
+
+    def enqueue_import_paths(self, paths: tuple[Path, ...]) -> None:
+        for path in paths:
+            self._pending_import_paths[str(path).casefold()] = path
+        self._start_pending_import()
+
+    def _start_pending_import(self) -> None:
+        if self.import_controller.busy or not self._pending_import_paths:
+            return
+        paths = tuple(self._pending_import_paths.values())
+        self._pending_import_paths.clear()
+        self.import_controller.start(paths)
+
+    @Slot(object)
+    def _import_succeeded(self, result: ImportResult) -> None:
+        if result.documents:
+            self.queue_page.merge_documents(result.documents, select=True)
+            self._queue_navigation.setText(
+                f"Da firmare ({len(self.queue_page.model.documents)})"
+            )
+        if result.errors:
+            LOGGER.warning(
+                "Importazione completata con errori: conteggio=%d dettagli=%s",
+                len(result.errors),
+                " | ".join(result.errors),
+            )
             QMessageBox.warning(
                 self,
                 "Aggiungi PDF",
-                "Uno o più documenti non possono essere letti.",
+                f"{len(result.errors)} documenti non sono stati aggiunti. "
+                "Consulta il log per i dettagli.",
             )
-            return
-        self.queue_page.merge_documents(documents)
-        self._queue_navigation.setText(
-            f"Da firmare ({len(self.queue_page.model.documents)})"
+        self._start_pending_import()
+
+    @Slot(str)
+    def _import_failed(self, technical_message: str) -> None:
+        LOGGER.error("Importazione PDF non riuscita: %s", technical_message)
+        QMessageBox.warning(
+            self,
+            "Aggiungi PDF",
+            "I documenti non possono essere aggiunti. Consulta il log errori.",
         )
+        self._start_pending_import()
 
     @Slot(object)
     def request_signing(self, position_plan: SignaturePositionPlan) -> None:
@@ -620,6 +664,7 @@ class MFirmaQtWindow(MSFluentWindow):
             controller.busy
             for controller in (
                 self.scan_controller,
+                self.import_controller,
                 self.discovery_controller,
                 self.preview_controller,
                 self.signing_controller,
@@ -701,6 +746,13 @@ class MFirmaQtWindow(MSFluentWindow):
     def wait_for_workers(self, timeout_ms: int = 3000) -> bool:
         scan_done = self.scan_controller.wait_for_done(timeout_ms)
         discovery_done = self.discovery_controller.wait_for_done(timeout_ms)
+        import_done = self.import_controller.wait_for_done(timeout_ms)
         preview_done = self.preview_controller.wait_for_done(timeout_ms)
         signing_done = self.signing_controller.wait_for_done(timeout_ms)
-        return scan_done and discovery_done and preview_done and signing_done
+        return (
+            scan_done
+            and import_done
+            and discovery_done
+            and preview_done
+            and signing_done
+        )

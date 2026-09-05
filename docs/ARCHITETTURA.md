@@ -48,6 +48,8 @@ Cartella / scelta file
 | `ui/main_window.py` | `MSFluentWindow`, navigazione, tray e coordinamento Qt |
 | `ui/tray.py` | Menu tray, ripristino finestra e richiesta di uscita |
 | `ui/window_state.py` | Stato geometrico atomico e ripristino entro i monitor disponibili |
+| `ui/single_instance.py` | Protocollo locale, istanza singola e inoltro di percorsi PDF |
+| `launcher.py` | Inoltro rapido o avvio della prima istanza senza caricare la GUI |
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
@@ -194,6 +196,25 @@ e versione note, scrive mediante sostituzione atomica e non contiene dati dei
 documenti o del dispositivo. Al ripristino Qt usa le geometrie disponibili in
 pixel logici e riporta interamente la finestra nel monitor con maggiore
 intersezione; uno stato completamente fuori schermo torna sul monitor primario.
+
+## Istanza singola e integrazione shell
+
+`avvia_mFirma.cmd` avvia `mfirma.launcher`, che tenta prima l'inoltro e carica
+l'applicazione completa soltanto quando non trova un'istanza attiva. Il canale
+usa `QLocalServer/QLocalSocket` con `UserAccessOption`; il nome deriva dalla
+directory di configurazione dell'utente. Il protocollo JSON è versionato,
+accetta esclusivamente da zero a 100 percorsi PDF assoluti, limita il messaggio
+a 256 KiB e non espone comandi di firma. Una richiesta vuota ripristina la
+finestra già aperta.
+
+I percorsi ricevuti sono letti da `FileImportController` fuori dal thread GUI;
+gli errori restano indipendenti e i PDF validi vengono aggiunti e selezionati.
+La firma non parte senza `Prepara la firma` e la conferma nell'anteprima.
+
+Gli script di registrazione aggiungono o rimuovono, solo sotto `HKCU`, il verbo
+Win32 `Firma PDF con mFirma` con `MultiSelectModel=Player`. Non caricano Python o
+PKCS#11 nel processo di Esplora file. La resa nel menu moderno e la selezione
+reale di 1, 50 e 100 file restano da collaudare su Windows 11.
 
 ## Confini intenzionali
 

@@ -99,6 +99,18 @@ e riproducibili.
 | Firma solo grafica | verifica dell'oggetto firma incorporato |
 | Errore su un file blocca tutti | esito indipendente per ogni job |
 | DLL non autorizzata | percorso esplicito; provenienza da verificare operativamente |
+| Richiesta IPC arbitraria | socket per utente, schema versionato, soli PDF assoluti e limiti 100 file/256 KiB |
+
+## IPC e integrazione con Esplora file
+
+Il server locale usa l'opzione Qt che limita l'accesso all'utente corrente. Non
+accetta azioni arbitrarie: una richiesta contiene soltanto versione e percorsi
+PDF assoluti, con limiti espliciti. I percorsi vengono comunque verificati in un
+worker prima di entrare nella coda e non avviano mai la firma automaticamente.
+
+Gli script del verbo classico scrivono esclusivamente sotto `HKCU` e dispongono
+di una rimozione simmetrica. Il componente eseguito da Esplora è il launcher;
+provider, DLL PKCS#11 e PIN restano nel processo applicativo.
 
 ## Rilevamento delle DLL
 

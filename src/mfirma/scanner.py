@@ -19,6 +19,12 @@ class ScanResult:
         return len(self.documents)
 
 
+@dataclass(frozen=True, slots=True)
+class ImportResult:
+    documents: tuple[DocumentCandidate, ...]
+    errors: tuple[str, ...] = ()
+
+
 def _is_hidden(path: Path) -> bool:
     return any(part.startswith(".") for part in path.parts)
 
@@ -95,3 +101,21 @@ def candidates_from_paths(paths: list[Path]) -> tuple[DocumentCandidate, ...]:
         unique[str(candidate.source).casefold()] = candidate
     return tuple(sorted(unique.values(), key=lambda item: str(item.source).casefold()))
 
+
+def import_candidates(paths: tuple[Path, ...]) -> ImportResult:
+    """Load explicitly selected PDFs without failing the entire selection."""
+    unique: dict[str, DocumentCandidate] = {}
+    errors: list[str] = []
+    for path in paths:
+        try:
+            candidate = DocumentCandidate.from_path(path)
+            if candidate.source.suffix.casefold() != ".pdf":
+                errors.append(f"{path.name}: il file non è un PDF")
+                continue
+            unique[str(candidate.source).casefold()] = candidate
+        except (OSError, ValueError) as exc:
+            errors.append(f"{path.name}: {exc}")
+    documents = tuple(
+        sorted(unique.values(), key=lambda item: str(item.source).casefold())
+    )
+    return ImportResult(documents, tuple(errors))

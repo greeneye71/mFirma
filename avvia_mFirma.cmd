@@ -28,4 +28,4 @@ if not exist "%MFIRMA_PYTHONW%" (
   pause
   exit /b 1
 )
-start "mFirma" "%MFIRMA_PYTHONW%" -m mfirma
+start "mFirma" "%MFIRMA_PYTHONW%" -m mfirma.launcher %*

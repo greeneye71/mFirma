@@ -172,6 +172,7 @@ Esempio:
   "pkcs11": {
     "module_path": "C:\\Program Files\\Vendor\\token-pkcs11.dll",
     "token_label": "TOKEN",
+    "token_serial": "53455249414c45",
     "certificate_label": "FIRMA",
     "certificate_id": "445333",
     "key_label": ""
@@ -183,9 +184,10 @@ Il PIN non deve essere aggiunto manualmente al file. La scrittura della
 configurazione è atomica: prima viene creato un temporaneo e poi sostituito il
 file completo.
 
-`certificate_id` è l'identificativo pubblico PKCS#11 letto automaticamente dal
-token. mFirma lo usa per associare il certificato alla relativa chiave privata
-anche quando le due etichette sono diverse. Non è una chiave né un dato segreto.
+`token_serial` e `certificate_id` sono identificativi pubblici PKCS#11 letti
+automaticamente. mFirma li usa rispettivamente per distinguere token con la
+stessa etichetta e associare il certificato alla relativa chiave privata. Non
+sono chiavi né dati segreti.
 
 ## Aggiornamento delle dipendenze
 
@@ -197,3 +199,14 @@ aggiornamento eseguire almeno:
 ```
 
 Ripetere poi la firma singola, la co-firma e il batch con il token reale.
+
+## Comando di Esplora file
+
+`registra_menu_esplora.cmd` aggiunge per il solo utente corrente il verbo
+classico `Firma PDF con mFirma`; non richiede privilegi amministrativi. Windows
+11 può collocarlo sotto `Mostra altre opzioni`. `rimuovi_menu_esplora.cmd`
+elimina in modo simmetrico la chiave registrata.
+
+La registrazione richiama il launcher leggero e non carica il middleware nel
+processo di Esplora file. Prima della distribuzione il comportamento va provato
+con 1, 50 e 100 PDF, inclusi nomi Unicode, spazi e percorsi UNC.

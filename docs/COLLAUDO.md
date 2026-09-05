@@ -104,7 +104,22 @@ Procedere gradualmente con 10, 50 e 100 PDF. Registrare:
 - comportamento dopo un PDF corrotto;
 - permanenza degli output riusciti dopo annullamento.
 
-### 5. Errori controllati
+### 5. Integrazione con Esplora file
+
+Su Windows 11, dopo avere eseguito `registra_menu_esplora.cmd`:
+
+1. provare un PDF e verificare che una seconda invocazione ripristini la stessa
+   finestra;
+2. ripetere con 50 e 100 PDF, controllando assenza di duplicati;
+3. includere spazi, accenti, parentesi e almeno un percorso UNC;
+4. verificare che i file siano selezionati ma che la firma non parta;
+5. eseguire `rimuovi_menu_esplora.cmd` e verificare la scomparsa del verbo.
+
+Annotare se il comando appare nel menu principale o sotto `Mostra altre
+opzioni`. Finché questa prova non è registrata, la selezione multipla shell non
+è dichiarata collaudata.
+
+### 6. Errori controllati
 
 - token assente prima dell'avvio;
 - token rimosso tra due file;

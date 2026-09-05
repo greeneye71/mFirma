@@ -1,16 +1,29 @@
 from __future__ import annotations
 
+import logging
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QFont, QFontDatabase
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 from qfluentwidgets import Theme, setTheme, setThemeColor
 
 from ..config import ConfigRepository
 from ..logging_setup import configure_logging, shutdown_logging
 from .main_window import MFirmaQtWindow
+from .single_instance import (
+    ForwardStatus,
+    RequestError,
+    SingleInstanceServer,
+    forward_file_request,
+    instance_server_name,
+    startup_pdf_paths,
+)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def configure_application(application: QApplication) -> None:
@@ -38,20 +51,67 @@ def run_application(
     arguments: Sequence[str] | None = None,
     repository: ConfigRepository | None = None,
 ) -> int:
-    log_path = configure_logging()
+    raw_arguments = list(arguments or sys.argv)
+    startup_error = ""
+    try:
+        incoming_paths = startup_pdf_paths(raw_arguments)
+    except RequestError as exc:
+        incoming_paths = ()
+        startup_error = str(exc)
     existing = QApplication.instance()
     owns_application = existing is None
     qt_arguments = [
         argument
-        for argument in (arguments or sys.argv)
+        for argument in raw_arguments
         if argument != "--qt-dashboard"
     ]
     application = existing or QApplication(qt_arguments)
     configure_application(application)
+    config_path = repository.path if repository is not None else None
+    single_instance = SingleInstanceServer(
+        instance_server_name(config_path), application
+    )
+    if not single_instance.listen():
+        status = (
+            ForwardStatus.REJECTED
+            if startup_error
+            else forward_file_request(single_instance.server_name, incoming_paths)
+        )
+        if status is ForwardStatus.DELIVERED:
+            return 0
+        if (
+            status is not ForwardStatus.NO_SERVER
+            or not single_instance.remove_stale_and_listen()
+        ):
+            QMessageBox.warning(
+                None,
+                "mFirma già in esecuzione",
+                startup_error
+                or "Non è stato possibile inoltrare i documenti alla finestra aperta.",
+            )
+            return 2
+
+    log_path = configure_logging()
     window = MFirmaQtWindow(repository, log_path=log_path)
+    single_instance.filesReceived.connect(window.receive_external_paths)
+    single_instance.requestRejected.connect(
+        lambda message: LOGGER.warning("Richiesta IPC rifiutata: %s", message)
+    )
+    window.shutdownReady.connect(single_instance.close)
     application.setQuitOnLastWindowClosed(not window.tray_controller.available)
     window.shutdownReady.connect(application.quit)
     window.show()
+    if startup_error:
+        QTimer.singleShot(
+            0,
+            lambda message=startup_error: QMessageBox.warning(
+                window, "Apertura PDF", message
+            ),
+        )
+    if incoming_paths:
+        QTimer.singleShot(
+            0, lambda paths=incoming_paths: window.receive_external_paths(paths)
+        )
     if owns_application:
         try:
             return application.exec()

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from mfirma.scanner import candidates_from_paths, scan_root
+from mfirma.scanner import candidates_from_paths, import_candidates, scan_root
 
 
 def test_scans_people_recursively_and_excludes_signed(workdir: Path):
@@ -30,3 +30,13 @@ def test_manual_candidates_are_deduplicated_case_insensitively(workdir: Path):
     source.write_bytes(b"pdf")
     candidates = candidates_from_paths([source, source])
     assert len(candidates) == 1
+
+
+def test_import_candidates_keeps_valid_pdfs_when_one_path_fails(workdir: Path):
+    valid = workdir / "valido.pdf"
+    valid.write_bytes(b"%PDF-fake")
+
+    result = import_candidates((workdir / "mancante.pdf", valid))
+
+    assert [document.source for document in result.documents] == [valid.resolve()]
+    assert len(result.errors) == 1

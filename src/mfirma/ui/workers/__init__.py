@@ -9,13 +9,14 @@ from .preview_worker import (
     PreviewResult,
     preview_appearance_data,
 )
-from .scan_worker import ScanController
+from .scan_worker import FileImportController, ScanController
 from .signing_worker import SigningController
 
 __all__ = [
     "DiscoveryController",
     "DiscoveryOperation",
     "DiscoveryOutcome",
+    "FileImportController",
     "PreviewController",
     "PreviewIdentity",
     "PreviewResult",

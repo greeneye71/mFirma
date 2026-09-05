@@ -173,6 +173,21 @@ non accede alla chiave privata.
 
 ## Caricare i documenti
 
+### Da Esplora file
+
+Eseguire una volta `registra_menu_esplora.cmd` per aggiungere il comando
+`Firma PDF con mFirma` all'utente Windows corrente. In Windows 11 il verbo
+classico può essere visibile sotto `Mostra altre opzioni`.
+
+Selezionare fino a 100 PDF, aprire il menu contestuale e scegliere il comando.
+Se mFirma è già aperta, la finestra viene ripristinata; altrimenti viene avviata.
+I file validi vengono aggiunti e selezionati nella dashboard, ma la firma non
+parte finché non si preme `Prepara la firma` e non si conferma l'anteprima.
+
+Per eliminare l'integrazione eseguire `rimuovi_menu_esplora.cmd`. La selezione
+multipla dal verbo classico deve ancora essere collaudata sulla postazione reale;
+in alternativa è sempre disponibile `Aggiungi PDF`.
+
 ### Dalla cartella organizzata per persona
 
 La struttura attesa è:
