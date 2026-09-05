@@ -51,6 +51,7 @@ Cartella / scelta file
 | `placement.py` | Coordinate dei quattro preset e trasformazione per rotazione |
 | `output.py` | Nome, file temporaneo e pubblicazione senza sovrascrittura |
 | `config.py` | Validazione e persistenza atomica della configurazione non segreta |
+| `logging_setup.py` | Log UTF-8 rotante, percorso locale e gestione degli handler |
 | `probe.py` | Enumerazione pubblica di token e certificati senza PIN |
 | `discovery.py` | Ricerca, filtro PE x64 e probe isolato dei moduli PKCS#11 |
 
@@ -174,6 +175,12 @@ Il controller esegue `BatchOrchestrator` in `QThreadPool`; il piano proveniente
 dall'anteprima contiene coordinate PDF per singolo documento oppure un
 rettangolo normalizzato condiviso. `ProgressPage` mostra gli eventi reali e
 `ResultPage` espone solo messaggi utente classificati, non le eccezioni tecniche.
+
+All'avvio `logging_setup.py` configura un file UTF-8 da 1 MiB con cinque copie
+in `%LOCALAPPDATA%\mFirma\logs`. Il batch registra tipo, codice e dettaglio
+tecnico degli errori dopo avere sostituito ogni occorrenza del PIN con
+`[RISERVATO]`; non registra il contenuto dei PDF. Quando il riepilogo contiene
+problemi, la UI mostra il percorso e consente di aprire direttamente il log.
 
 `SystemTrayController` mantiene attiva l'applicazione quando la finestra viene
 chiusa. `Esci` avvia uno shutdown non bloccante: richiede al batch di annullarsi

@@ -22,21 +22,27 @@ from ..models import BatchResultModel, ProblemsFilterModel, user_message
 class ResultPage(QWidget):
     backRequested = Signal()
     openFolderRequested = Signal(object)
+    openLogRequested = Signal(object)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, log_path: Path | None = None):
         super().__init__(parent)
         self.setObjectName("resultPage")
         self.model = BatchResultModel(parent=self)
         self.proxy = ProblemsFilterModel(self)
         self.proxy.setSourceModel(self.model)
         self._common_folder: Path | None = None
+        self._log_path = log_path
         layout = QVBoxLayout(self)
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(14)
         self.title = TitleLabel("Firma completata", self)
         self.subtitle = BodyLabel("", self)
+        self.log_hint = BodyLabel("", self)
+        self.log_hint.setWordWrap(True)
+        self.log_hint.hide()
         layout.addWidget(self.title)
         layout.addWidget(self.subtitle)
+        layout.addWidget(self.log_hint)
 
         counts = QFrame(self)
         counts.setFrameShape(QFrame.Shape.StyledPanel)
@@ -74,16 +80,21 @@ class ResultPage(QWidget):
         self.back_button = PushButton("Torna ai documenti", self)
         self.open_folder_button = PushButton("Apri cartella", self)
         self.copy_button = PushButton("Copia riepilogo", self)
+        self.open_log_button = PushButton("Apri log errori", self)
+        self.open_log_button.setAccessibleName("Apri il log tecnico degli errori")
+        self.open_log_button.hide()
         self.problems_only = CheckBox("Mostra solo problemi", self)
         actions.addWidget(self.back_button)
         actions.addWidget(self.open_folder_button)
         actions.addWidget(self.copy_button)
+        actions.addWidget(self.open_log_button)
         actions.addStretch(1)
         actions.addWidget(self.problems_only)
         layout.addLayout(actions)
         self.back_button.clicked.connect(self.backRequested)
         self.open_folder_button.clicked.connect(self._open_folder)
         self.copy_button.clicked.connect(self.copy_summary)
+        self.open_log_button.clicked.connect(self._open_log)
         self.problems_only.toggled.connect(self.proxy.set_problems_only)
 
     def set_jobs(self, jobs: list[SignJob] | tuple[SignJob, ...]) -> None:
@@ -109,6 +120,16 @@ class ResultPage(QWidget):
         has_problems = any(job.status is not JobStatus.SUCCEEDED for job in jobs)
         self.problems_only.setVisible(has_problems)
         self.problems_only.setChecked(False)
+        show_log = has_problems and self._log_path is not None
+        self.open_log_button.setVisible(show_log)
+        self.log_hint.setVisible(show_log)
+        if show_log:
+            self.log_hint.setText(
+                f"Dettagli tecnici registrati in: {self._log_path}"
+            )
+
+    def set_log_path(self, path: Path) -> None:
+        self._log_path = path
 
     def summary_text(self) -> str:
         lines = [self.title.text(), self.subtitle.text()]
@@ -126,3 +147,7 @@ class ResultPage(QWidget):
     def _open_folder(self) -> None:
         if self._common_folder is not None:
             self.openFolderRequested.emit(self._common_folder)
+
+    def _open_log(self) -> None:
+        if self._log_path is not None:
+            self.openLogRequested.emit(self._log_path)

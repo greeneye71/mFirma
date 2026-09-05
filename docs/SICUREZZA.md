@@ -57,11 +57,19 @@ crittograficamente valida. Non sostituisce:
 Questi aspetti richiedono una policy concordata e, se necessari, un'evoluzione
 verso PAdES B-T, B-LT o B-LTA.
 
-## Dati personali
+## Log e dati personali
 
-Percorsi e nomi dei file possono contenere dati personali. La versione attuale
-non scrive log applicativi persistenti. Le segnalazioni manuali devono essere
-redatte prima della condivisione.
+Il log applicativo persistente è salvato in
+`%LOCALAPPDATA%\mFirma\logs\mfirma.log`, è limitato a 1 MiB e conserva cinque
+copie. Registra eventi operativi ed errori tecnici, ma non il contenuto dei PDF
+né il PIN. Prima della registrazione il batch sostituisce ogni occorrenza del
+PIN ricevuto con `[RISERVATO]`; anche l'errore imprevisto del worker viene
+sanitizzato prima di attraversare il segnale Qt.
+
+Nomi dei file, etichette di token e certificati e messaggi restituiti dal
+middleware possono comunque contenere dati personali. Il log deve quindi
+restare nel profilo locale dell'utente ed essere controllato e redatto prima
+della condivisione.
 
 ## Dipendenze
 
@@ -84,7 +92,7 @@ e riproducibili.
 
 | Rischio | Controllo attuale |
 |---|---|
-| PIN salvato per errore | schema config privo del campo e nessun logging persistente |
+| PIN salvato per errore | schema config privo del campo e sanitizzazione prima di job, segnali e log |
 | Sorgente sovrascritto | destinazione separata per nome e scrittura temporanea |
 | Output preesistente perso | collisione trattata come `saltato` |
 | PDF cambiato dopo selezione | confronto dimensione e data di modifica |

@@ -210,6 +210,18 @@ anche di selezionare un PDF già firmato per aggiungere una firma successiva.
    dialogo protetto.
 6. Attendere il riepilogo finale.
 
+Se uno o più documenti non vengono firmati, il riepilogo mostra il pulsante
+`Apri log errori`. Il file diagnostico si trova normalmente in:
+
+```text
+%LOCALAPPDATA%\mFirma\logs\mfirma.log
+```
+
+Il log indica data, componente, codice e dettaglio tecnico dell'errore. Prima
+di inviarlo ad altri, controllarlo perché nomi di file, etichette del dispositivo
+o del certificato possono contenere dati personali. Il PIN viene rimosso dai
+messaggi del batch e non deve comparire nel log.
+
 La sessione PKCS#11 viene aperta una volta per il batch, ma il dispositivo può
 richiedere nuovamente il PIN per ogni documento. Questo comportamento dipende
 dal token e non può essere imposto dall'applicazione.

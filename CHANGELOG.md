@@ -2,6 +2,12 @@
 
 ## Non rilasciato
 
+- aggiunto il log UTF-8 rotante in `%LOCALAPPDATA%\mFirma\logs`, con codice e
+  dettaglio tecnico degli errori e riepilogo operativo del batch;
+- aggiunti percorso e pulsante `Apri log errori` nel riepilogo dei batch con
+  problemi;
+- sanitizzati i dettagli del batch e degli errori imprevisti del worker prima
+  della registrazione, con test esplicito che impedisce la persistenza del PIN;
 - aggiunto l'inventario PKCS#11 per singolo token e un dialogo di scelta quando
   sono collegati più dispositivi;
 - il seriale pubblico del token viene salvato in esadecimale e passato a

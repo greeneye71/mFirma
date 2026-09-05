@@ -69,6 +69,7 @@ class MFirmaQtWindow(MSFluentWindow):
         window_state_repository: WindowStateRepository | None = None,
         tray_available: bool | None = None,
         auto_scan: bool = True,
+        log_path: Path | None = None,
     ):
         super().__init__()
         self.repository = repository or ConfigRepository()
@@ -91,7 +92,8 @@ class MFirmaQtWindow(MSFluentWindow):
         self.queue_page = QueuePage(self)
         self.preview_page = PreviewPage(self)
         self.progress_page = ProgressPage(self)
-        self.result_page = ResultPage(self)
+        self.log_path = log_path
+        self.result_page = ResultPage(self, log_path=self.log_path)
         self.history_page = HistoryPage(self)
         self.settings_page = SettingsPage(self.config, self)
         self._shutdown_requested = False
@@ -166,6 +168,7 @@ class MFirmaQtWindow(MSFluentWindow):
         self.tray_controller.exitRequested.connect(self.request_exit)
         self.result_page.backRequested.connect(self._return_to_documents)
         self.result_page.openFolderRequested.connect(self._open_output_folder)
+        self.result_page.openLogRequested.connect(self._open_log)
         self.settings_page.saveRequested.connect(self.save_settings)
         self.settings_page.browseRootRequested.connect(self.choose_monitor_root)
         self.settings_page.browseModuleRequested.connect(self.choose_module)
@@ -175,7 +178,7 @@ class MFirmaQtWindow(MSFluentWindow):
             lambda: self.queue_page.set_scan_state(ScanState.SCANNING)
         )
         self.scan_controller.scanSucceeded.connect(self._scan_succeeded)
-        self.scan_controller.scanFailed.connect(self.queue_page.set_scan_error)
+        self.scan_controller.scanFailed.connect(self._scan_failed)
         self.discovery_controller.busyChanged.connect(
             self.settings_page.set_discovery_busy
         )
@@ -222,6 +225,11 @@ class MFirmaQtWindow(MSFluentWindow):
     def _scan_succeeded(self, result: ScanResult) -> None:
         self.queue_page.set_documents(result)
         self._queue_navigation.setText(f"Da firmare ({result.total})")
+
+    @Slot(str)
+    def _scan_failed(self, technical_message: str) -> None:
+        LOGGER.warning("Scansione non riuscita: %s", technical_message)
+        self.queue_page.set_scan_error(technical_message)
 
     @Slot()
     def choose_monitor_root(self) -> None:
@@ -565,6 +573,17 @@ class MFirmaQtWindow(MSFluentWindow):
     @Slot(object)
     def _open_output_folder(self, folder: Path) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
+    @Slot(object)
+    def _open_log(self, path: Path) -> None:
+        if not path.is_file():
+            QMessageBox.information(
+                self,
+                "Log errori",
+                "Il log non è ancora stato creato.",
+            )
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     @Slot()
     def restore_from_tray(self) -> None:

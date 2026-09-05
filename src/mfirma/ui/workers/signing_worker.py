@@ -44,8 +44,13 @@ class _SigningWorker(QRunnable):
                 placements=self._position_plan.placements,
                 normalized_rect=self._position_plan.shared_rect,
             )
-        except Exception:
-            self.signals.failed.emit("BATCH_WORKER_FAILED")
+        except Exception as exc:
+            message = str(exc)
+            if secret:
+                message = message.replace(secret, "[RISERVATO]")
+            self.signals.failed.emit(
+                f"BATCH_WORKER_FAILED: {type(exc).__name__}: {message}"
+            )
         else:
             self.signals.finished.emit(jobs)
         finally:

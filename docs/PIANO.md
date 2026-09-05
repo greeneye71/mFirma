@@ -66,7 +66,8 @@ supportata. Fino ad allora PKCS#11 resta `da verificare sul dispositivo reale`.
   testata senza hardware**;
 - prossimo incremento: istanza singola e selezione multipla da Esplora file;
 - istanza singola, launcher e selezione multipla da Esplora file;
-- log rotanti e cronologia locale.
+- log rotanti con accesso dal riepilogo: **implementati**; cronologia locale da
+  implementare.
 
 ### 4. Pilot
 

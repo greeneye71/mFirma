@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
@@ -20,6 +21,7 @@ from .provider import SigningProvider
 
 ProgressCallback = Callable[[int, int, SignJob], None]
 EventCallback = Callable[[BatchProgress], None]
+LOGGER = logging.getLogger(__name__)
 
 
 def _redact_secret(message: str, secret: str | None) -> str:
@@ -55,6 +57,7 @@ class BatchOrchestrator:
     ) -> list[SignJob]:
         jobs = self.build_jobs(documents)
         cancellation = cancel or threading.Event()
+        LOGGER.info("Avvio batch: documenti=%d", len(jobs))
 
         try:
             with self.provider.open(pin) as session:
@@ -100,11 +103,18 @@ class BatchOrchestrator:
                             )
                         )
         except Exception as exc:
+            safe_message = _redact_secret(str(exc), pin)
+            LOGGER.error(
+                "Apertura sessione di firma non riuscita: tipo=%s codice=%s dettaglio=%s",
+                type(exc).__name__,
+                getattr(exc, "code", "SIGNATURE_FAILED"),
+                safe_message,
+            )
             for index, job in enumerate(jobs, start=1):
                 if job.status is JobStatus.PENDING:
                     job.status = JobStatus.FAILED
                     job.error_code = getattr(exc, "code", "SIGNATURE_FAILED")
-                    job.message = _redact_secret(str(exc), pin)
+                    job.message = safe_message
                     if progress:
                         progress(index, len(jobs), job)
                     if events:
@@ -117,6 +127,13 @@ class BatchOrchestrator:
                                 job,
                             )
                         )
+        LOGGER.info(
+            "Fine batch: riusciti=%d errori=%d saltati=%d annullati=%d",
+            sum(job.status is JobStatus.SUCCEEDED for job in jobs),
+            sum(job.status is JobStatus.FAILED for job in jobs),
+            sum(job.status is JobStatus.SKIPPED for job in jobs),
+            sum(job.status is JobStatus.CANCELLED for job in jobs),
+        )
         return jobs
 
     def _run_one(
@@ -170,14 +187,28 @@ class BatchOrchestrator:
             job.status = JobStatus.SKIPPED
             job.error_code = exc.code
             job.message = _redact_secret(str(exc), secret)
+            self._log_job_problem(job)
         except (MFirmaError, OSError) as exc:
             job.status = JobStatus.FAILED
             job.error_code = getattr(exc, "code", "OUTPUT_WRITE_FAILED")
             job.message = _redact_secret(str(exc), secret)
+            self._log_job_problem(job)
         except Exception as exc:
             job.status = JobStatus.FAILED
             job.error_code = "SIGNATURE_FAILED"
             job.message = _redact_secret(str(exc), secret)
+            self._log_job_problem(job)
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+    @staticmethod
+    def _log_job_problem(job: SignJob) -> None:
+        log = LOGGER.warning if job.status is JobStatus.SKIPPED else LOGGER.error
+        log(
+            "Documento non completato: file=%s stato=%s codice=%s dettaglio=%s",
+            job.document.source.name,
+            job.status,
+            job.error_code or "UNKNOWN",
+            job.message,
+        )

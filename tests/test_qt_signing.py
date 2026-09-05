@@ -158,7 +158,8 @@ def test_result_page_sanitizes_technical_errors_and_filters_problems(qtbot, work
         error_code="SIGNATURE_FAILED",
         message="token error; PIN 1234-test-only",
     )
-    page = ResultPage()
+    log_path = workdir / "logs" / "mfirma.log"
+    page = ResultPage(log_path=log_path)
     qtbot.addWidget(page)
 
     page.set_jobs((succeeded, failed))
@@ -166,6 +167,11 @@ def test_result_page_sanitizes_technical_errors_and_filters_problems(qtbot, work
     assert page.model.rowCount() == 2
     assert "1234-test-only" not in page.summary_text()
     assert page.model.data(page.model.index(1, 4)) == "La firma non è riuscita."
+    assert page.open_log_button.isVisibleTo(page)
+    assert str(log_path) in page.log_hint.text()
+    with qtbot.waitSignal(page.openLogRequested) as signal:
+        page.open_log_button.click()
+    assert signal.args == [log_path]
     page.problems_only.setChecked(True)
     assert page.proxy.rowCount() == 1
 

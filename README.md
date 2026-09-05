@@ -127,6 +127,9 @@ Implementato:
   dentro un monitor disponibile;
 - comandi tastiera principali e nomi accessibili per dashboard, impostazioni,
   anteprima, avanzamento e risultati.
+- log applicativo rotante in `%LOCALAPPDATA%\mFirma\logs\mfirma.log`, con
+  dettagli tecnici sanitizzati e accesso dal riepilogo quando si verifica un
+  problema.
 
 Rimandato: menu di Esplora file, destinazione separata, pacchetto autonomo con
 installer Windows e provider CSP/CNG. Questi punti sono pianificati in

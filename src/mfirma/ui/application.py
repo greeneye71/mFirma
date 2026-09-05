@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 from qfluentwidgets import Theme, setTheme, setThemeColor
 
 from ..config import ConfigRepository
+from ..logging_setup import configure_logging, shutdown_logging
 from .main_window import MFirmaQtWindow
 
 
@@ -37,6 +38,7 @@ def run_application(
     arguments: Sequence[str] | None = None,
     repository: ConfigRepository | None = None,
 ) -> int:
+    log_path = configure_logging()
     existing = QApplication.instance()
     owns_application = existing is None
     qt_arguments = [
@@ -46,12 +48,15 @@ def run_application(
     ]
     application = existing or QApplication(qt_arguments)
     configure_application(application)
-    window = MFirmaQtWindow(repository)
+    window = MFirmaQtWindow(repository, log_path=log_path)
     application.setQuitOnLastWindowClosed(not window.tray_controller.available)
     window.shutdownReady.connect(application.quit)
     window.show()
     if owns_application:
-        return application.exec()
+        try:
+            return application.exec()
+        finally:
+            shutdown_logging()
     return 0
 
 

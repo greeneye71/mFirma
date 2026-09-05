@@ -6,7 +6,7 @@
 - istanza singola e inoltro da una seconda invocazione;
 - menu contestuale di Esplora file;
 - destinazione separata con conservazione dell'albero relativo;
-- cronologia, log rotanti ed esportazione del riepilogo;
+- cronologia persistente ed esportazione strutturata del riepilogo;
 - pacchetto autonomo e installer Windows con disinstallazione per PC senza
   Python; è disponibile soltanto lo script locale `installa_mFirma.cmd`;
 - provider Windows CSP/CNG;
