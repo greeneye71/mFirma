@@ -2,6 +2,12 @@
 
 ## Non rilasciato
 
+- registrazione durevole del PDF firmato prima della cancellazione dell'originale,
+  con evento separato per l'esito della cancellazione (registro versione 2);
+- recupero guidato della coda incompleta del registro con conferma e backup integrale;
+- impronta del certificato obbligatoria per PKCS#11 e confronto con il certificato
+  incorporato in ogni PDF, prima della pubblicazione;
+
 - semplificata la dashboard: impostazioni in fondo alla navigazione, righe
   selezionate evidenziate per intero, percorso cartella e conteggio sul pulsante;
 - aggiunte le modalità Manuale e Da cartella, senza attivare la futura modalità automatica;

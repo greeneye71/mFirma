@@ -6,6 +6,7 @@ import os
 import socket
 import threading
 import uuid
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Protocol
@@ -31,9 +32,13 @@ class SignatureRegister(Protocol):
     def append(self, record: dict) -> None: ...
 
 
+class IncompleteRegisterError(ValueError):
+    pass
+
+
 def record_for(job: SignJob, identity: SigningIdentity, *, mode: str, source_action: str) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "operation_id": job.operation_id,
         "batch_id": job.batch_id,
         "completed_at_utc": job.completed_at,
@@ -91,7 +96,7 @@ class JsonlSignatureRegister:
         if stream.tell():
             stream.seek(-1, os.SEEK_END)
             if stream.read(1) != b"\n":
-                raise ValueError("Registro incompleto: conservare il file e ripristinarlo prima di firmare")
+                raise IncompleteRegisterError("Registro incompleto: ripristinarlo prima di firmare")
         stream.seek(0, os.SEEK_END)
 
     def append(self, record: dict) -> None:
@@ -104,3 +109,34 @@ class JsonlSignatureRegister:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
+
+    def recover_incomplete_tail(self) -> Path:
+        """Ripara solo la coda, dopo backup durevole; non ricostruisce firme mancanti."""
+        with self._lock:
+            backup = self.path.with_name(f"{self.path.name}.{uuid.uuid4().hex}.bak")
+            with self.path.open("rb") as source, backup.open("xb") as target:
+                for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                    target.write(chunk)
+                target.flush()
+                os.fsync(target.fileno())
+            handle, name = tempfile.mkstemp(dir=self.path.parent, prefix=".register-recovery-")
+            temporary = Path(name)
+            try:
+                with os.fdopen(handle, "wb") as target, backup.open("rb") as source:
+                    for line in source:
+                        try:
+                            value = json.loads(line)
+                            if not isinstance(value, dict):
+                                raise ValueError("Registrazione non valida")
+                        except (ValueError, UnicodeDecodeError):
+                            if line.endswith(b"\n"):
+                                raise ValueError("Registro danneggiato prima della coda: necessario controllo manuale")
+                            # La parte incompleta rimane integralmente nel backup.
+                            break
+                        target.write(line if line.endswith(b"\n") else line + b"\n")
+                    target.flush()
+                    os.fsync(target.fileno())
+                os.replace(temporary, self.path)
+            finally:
+                temporary.unlink(missing_ok=True)
+            return backup

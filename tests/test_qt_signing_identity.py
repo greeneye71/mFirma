@@ -13,12 +13,33 @@ from mfirma.ui.main_window import MFirmaQtWindow
 from mfirma.ui.workers import DiscoveryController
 
 
+@pytest.mark.parametrize("accept", [False, True])
+def test_register_recovery_requires_confirmation_and_never_starts_signing(signing_flow, monkeypatch, accept):
+    state = signing_flow
+    path = state.window.signature_register.path
+    original = b'{"valid":true}\n{"partial":'
+    path.write_bytes(original)
+    monkeypatch.setattr(QMessageBox, "question", lambda *args: (
+        QMessageBox.StandardButton.Yes if accept else QMessageBox.StandardButton.No
+    ))
+    assert not state.window._prepare_signature_register()
+    assert state.reads == 0
+    assert not state.batches
+    if accept:
+        assert path.read_bytes() == b'{"valid":true}\n'
+        assert next(path.parent.glob("*.bak")).read_bytes() == original
+        assert state.window._prepare_signature_register()
+    else:
+        assert path.read_bytes() == original
+        assert not list(path.parent.glob("*.bak"))
+
+
 @pytest.fixture
 def signing_flow(qtbot, workdir, monkeypatch):
     module = workdir / "vendor.dll"
     module.write_bytes(b"test middleware")
     certificate = CertificateCandidate(
-        label="Firma", id_hex="01", subject="CN=Persona A", content_commitment=False,
+        label="Firma", id_hex="01", subject="CN=Persona A", content_commitment=False, sha256="a" * 64,
     )
     token = TokenCandidate(
         slot_id=1, label="Tessera", serial="A", serial_hex="41",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import hashlib
 import uuid
 from collections.abc import Callable
 from datetime import datetime
@@ -61,7 +62,7 @@ def embedded_signature_count(path: Path) -> int:
         raise PdfInvalidError(f"Impossibile leggere le firme PDF: {exc}") from exc
 
 
-def verify_new_signature(path: Path, previous_count: int) -> None:
+def verify_new_signature(path: Path, previous_count: int, *, expected_certificate_sha256: str) -> None:
     """Verifica incremento, integrità e firma crittografica, non la fiducia legale."""
     try:
         from pyhanko.pdf_utils.reader import PdfFileReader
@@ -76,6 +77,9 @@ def verify_new_signature(path: Path, previous_count: int) -> None:
                     "L'output non contiene esattamente una nuova firma"
                 )
             newest = signatures[-1]
+            actual = hashlib.sha256(newest.signer_cert.dump()).hexdigest()
+            if not expected_certificate_sha256 or actual != expected_certificate_sha256.lower():
+                raise SignedOutputInvalidError("Il certificato nel PDF non corrisponde a quello selezionato")
             context = ValidationContext(
                 trust_roots=[newest.signer_cert], allow_fetching=False
             )
@@ -103,11 +107,17 @@ def sign_pades(
     placement: SignaturePlacement | None = None,
     normalized_rect: NormalizedDisplayRect | None = None,
     phase_callback: Callable[[str], None] | None = None,
+    expected_certificate_sha256: str | None = None,
 ) -> None:
     """Aggiunge una firma PAdES B-B visibile all'ultima pagina."""
     from pyhanko import stamp
     from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
     from pyhanko.sign import fields, signers
+
+    expected_certificate_sha256 = (
+        hashlib.sha256(signer.signing_cert.dump()).hexdigest()
+        if expected_certificate_sha256 is None else expected_certificate_sha256
+    )
 
     geometry, page_index, _ = read_last_page_geometry(source)
     if placement is not None and normalized_rect is not None:
@@ -205,4 +215,5 @@ def sign_pades(
 
     if phase_callback:
         phase_callback("verifying")
-    verify_new_signature(temporary_output, old_signature_count)
+    verify_new_signature(temporary_output, old_signature_count,
+                         expected_certificate_sha256=expected_certificate_sha256)

@@ -123,8 +123,13 @@ class BatchOrchestrator:
                         normalized_rect=normalized_rect if placement is None else None,
                         secret=pin,
                     )
-                    if not self._register_job(job):
+                    delete_pending = self.source_action == "delete" and job.signature_saved
+                    if not self._register_job(job, event_type="source_delete_pending" if delete_pending else "result"):
                         cancellation.set()
+                    elif delete_pending:
+                        self._delete_source(job, secret=pin)
+                        if not self._register_job(job, source_deleted=job.status is JobStatus.SUCCEEDED):
+                            cancellation.set()
                     if progress:
                         progress(index, len(jobs), job)
                     if events:
@@ -228,19 +233,6 @@ class BatchOrchestrator:
             )
             temporary = None
             job.signature_saved = True
-            if self.source_action == "delete":
-                try:
-                    self._check_source_unchanged(job)
-                    job.document.source.unlink()
-                except (OSError, FileChangedError) as exc:
-                    job.status = JobStatus.FAILED
-                    job.error_code = "SOURCE_DELETE_FAILED"
-                    job.message = _redact_secret(
-                        f"File firmato salvato in {job.destination}; originale non eliminato: {exc}",
-                        secret,
-                    )
-                    self._log_job_problem(job)
-                    return
             job.status = JobStatus.SUCCEEDED
             job.message = str(job.destination)
         except OutputExistsError as exc:
@@ -269,14 +261,29 @@ class BatchOrchestrator:
                 or stat.st_mtime_ns != job.document.modified_ns):
             raise FileChangedError("Il file è cambiato durante la firma")
 
-    def _register_job(self, job: SignJob) -> bool:
+    def _delete_source(self, job: SignJob, *, secret: str | None) -> None:
+        try:
+            self._check_source_unchanged(job)
+            job.document.source.unlink()
+        except (OSError, FileChangedError) as exc:
+            job.status = JobStatus.FAILED
+            job.error_code = "SOURCE_DELETE_FAILED"
+            job.message = _redact_secret(
+                f"File firmato salvato in {job.destination}; originale non eliminato: {exc}", secret,
+            )
+            self._log_job_problem(job)
+
+    def _register_job(self, job: SignJob, *, event_type: str = "result", source_deleted: bool | None = None) -> bool:
         job.completed_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
         if self.register is None:
             return True
         try:
-            self.register.append(record_for(
+            record = record_for(
                 job, self.signing_identity, mode=self.mode, source_action=self.source_action,
-            ))
+            )
+            record.update(event_type=event_type, source_deleted=source_deleted,
+                          event_id=str(uuid.uuid4()))
+            self.register.append(record)
         except Exception:
             job.register_error = True
             LOGGER.error("Registrazione firma non riuscita: operazione=%s batch=%s", job.operation_id, job.batch_id)

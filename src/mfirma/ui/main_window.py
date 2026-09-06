@@ -21,7 +21,7 @@ from ..config import AppConfig, ConfigRepository, Pkcs11Config
 from ..discovery import ModuleCandidate
 from ..history import BatchHistoryRecord, HistoryRepository
 from ..identity import signer_display_name
-from ..signature_register import JsonlSignatureRegister, SigningIdentity
+from ..signature_register import IncompleteRegisterError, JsonlSignatureRegister, SigningIdentity
 from ..models import DocumentCandidate, SignaturePositionPlan
 from ..provider import Pkcs11SigningProvider, SigningProvider
 from ..scanner import ImportResult, ScanResult
@@ -514,6 +514,8 @@ class MFirmaQtWindow(MSFluentWindow):
         documents = self.preview_page.documents
         if not documents or self.signing_controller.busy or self._pending_signing is not None:
             return
+        if not self._prepare_signature_register():
+            return
         if not self.config.pkcs11.module_path:
             QMessageBox.warning(
                 self, "Dispositivo di firma",
@@ -525,6 +527,35 @@ class MFirmaQtWindow(MSFluentWindow):
         self.preview_page.certificate_label.setText("Lettura della tessera in corso…")
         if not self.signing_discovery_controller.inspect(Path(self.config.pkcs11.module_path)):
             self._finish_signing_request()
+
+    def _prepare_signature_register(self) -> bool:
+        try:
+            self.signature_register.prepare()
+        except IncompleteRegisterError:
+            answer = QMessageBox.question(
+                self, "Recupero registro firme",
+                "Il registro contiene una riga finale incompleta. Creare una copia integrale "
+                "di sicurezza e recuperare le righe leggibili? La parte incompleta resterà "
+                "nel backup. Eventuali firme non registrate richiedono un controllo manuale.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return False
+            try:
+                backup = self.signature_register.recover_incomplete_tail()
+                self.signature_register.prepare()
+            except Exception:
+                QMessageBox.warning(self, "Registro firme", "Recupero non riuscito. Nessuna firma avviata; verificare il registro e le copie di sicurezza.")
+                return False
+            QMessageBox.information(self, "Registro recuperato",
+                                    f"Copia di sicurezza: {backup}\nControllare gli esiti dell'operazione interrotta prima di riprovare la firma.")
+            # Nuova azione esplicita dopo il controllo degli esiti, mai rifirma automatica.
+            return False
+        except Exception:
+            QMessageBox.warning(self, "Registro firme", "Registro non disponibile. Nessuna firma avviata.")
+            return False
+        return True
 
     def _finish_signing_request(self) -> None:
         self._pending_signing = None

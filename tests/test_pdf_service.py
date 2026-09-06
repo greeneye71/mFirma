@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,8 @@ from pypdf import PdfReader, PdfWriter
 from mfirma.appearance import ReportLabSignatureAppearanceRenderer
 from mfirma.config import SignatureConfig
 from mfirma.models import SignaturePlacement
-from mfirma.pdf_service import embedded_signature_count, sign_pades
+from mfirma.pdf_service import embedded_signature_count, sign_pades, verify_new_signature
+from mfirma.errors import SignedOutputInvalidError
 
 
 def _resources_have_embedded_font(resources) -> bool:
@@ -89,6 +91,23 @@ def make_signer(workdir: Path):
     )
     cert_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
     return signers.SimpleSigner.load(str(key_path), str(cert_path))
+
+
+def test_final_pdf_must_contain_selected_certificate(workdir):
+    source = workdir / "source.pdf"
+    output = workdir / "signed.pdf"
+    writer = PdfWriter()
+    writer.add_blank_page(width=595, height=842)
+    writer.write(source)
+    signer = make_signer(workdir)
+    fingerprint = hashlib.sha256(signer.signing_cert.dump()).hexdigest()
+    sign_pades(source, output, signer, SignatureConfig(), expected_certificate_sha256=fingerprint)
+    verify_new_signature(output, 0, expected_certificate_sha256=fingerprint)
+    for wrong in ("0" * 64, ""):
+        with pytest.raises(SignedOutputInvalidError, match="certificato"):
+            verify_new_signature(output, 0, expected_certificate_sha256=wrong)
+    with pytest.raises(SignedOutputInvalidError, match="certificato"):
+        sign_pades(source, output, signer, SignatureConfig(), expected_certificate_sha256="0" * 64)
 
 
 def test_pades_supports_batch_style_sequential_cosigning(workdir: Path):

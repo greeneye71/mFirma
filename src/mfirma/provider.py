@@ -61,6 +61,7 @@ class _PadesSigningSession:
     signer: Any
     settings: SignatureConfig
     signing_time: datetime | None = None
+    expected_certificate_sha256: str = ""
 
     def sign_pdf(
         self,
@@ -81,6 +82,7 @@ class _PadesSigningSession:
             placement=placement,
             normalized_rect=normalized_rect,
             phase_callback=phase_callback,
+            expected_certificate_sha256=self.expected_certificate_sha256,
         )
 
 
@@ -98,6 +100,9 @@ class Pkcs11SigningProvider:
             raise ProviderConfigurationError(f"DLL PKCS#11 non trovata: {module}")
         if not self.config.certificate_label and not self.config.certificate_id:
             raise ProviderConfigurationError("Selezionare il certificato di firma")
+        if (len(self.expected_certificate_sha256) != 64
+                or any(c not in "0123456789abcdef" for c in self.expected_certificate_sha256.lower())):
+            raise ProviderConfigurationError("Impronta del certificato assente o non valida: rileggere la tessera")
 
     @contextmanager
     def open(self, pin: str | None) -> Iterator[SigningSession]:
@@ -132,8 +137,9 @@ class Pkcs11SigningProvider:
         try:
             if self.expected_certificate_sha256:
                 actual = hashlib.sha256(signer.signing_cert.dump()).hexdigest()
-                if actual != self.expected_certificate_sha256:
+                if actual != self.expected_certificate_sha256.lower():
                     raise ProviderConfigurationError("Il certificato sulla tessera è cambiato dopo la selezione")
-            yield _PadesSigningSession(signer, self.signature)
+            yield _PadesSigningSession(signer, self.signature,
+                                      expected_certificate_sha256=self.expected_certificate_sha256.lower())
         finally:
             signing_context.__exit__(None, None, None)

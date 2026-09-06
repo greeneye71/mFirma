@@ -50,7 +50,7 @@ def test_register_tracks_actual_signed_file_and_identity(workdir, action):
     job, = BatchOrchestrator(
         Provider(), register=register, signing_identity=identity, mode="manual", source_action=action,
     ).run([candidate], pin="PIN-secret")
-    record, = records(register)
+    record = records(register)[-1]
     assert record["signer_name"] == "Mario Rossi"
     assert record["token_serial"] == "4142"
     assert record["certificate_serial"] == "12345"
@@ -140,7 +140,9 @@ def test_delete_error_is_recorded_as_saved_signature(workdir, monkeypatch):
 
     monkeypatch.setattr(Path, "unlink", deny_source)
     BatchOrchestrator(Provider(), register=register, source_action="delete").run([candidate], pin=None)
-    record, = records(register)
+    pending, record = records(register)
+    assert pending["event_type"] == "source_delete_pending"
+    assert record["source_deleted"] is False
     assert record["signature_saved"] is True
     assert record["error_code"] == "SOURCE_DELETE_FAILED"
     assert record["output_sha256"]
@@ -155,3 +157,104 @@ def test_cancelled_documents_are_recorded_without_signatures(workdir):
     assert record["status"] == JobStatus.CANCELLED.value
     assert record["signature_saved"] is False
     assert record["signed_at_utc"] is None
+
+
+def test_delete_waits_for_durable_register(workdir, monkeypatch):
+    candidate = document(workdir)
+    register = JsonlSignatureRegister(workdir / "signatures.jsonl")
+    def fail(record):
+        assert candidate.source.exists()
+        raise OSError("disco pieno")
+    monkeypatch.setattr(register, "append", fail)
+    job, = BatchOrchestrator(Provider(), register=register, source_action="delete").run([candidate], pin=None)
+    assert job.signature_saved and job.register_error
+    assert candidate.source.read_bytes() == b"originale"
+
+
+def test_delete_events_bracket_actual_deletion(workdir, monkeypatch):
+    candidate = document(workdir)
+    register = JsonlSignatureRegister(workdir / "signatures.jsonl")
+    append = register.append
+    observed = []
+    def track(record):
+        observed.append(candidate.source.exists())
+        append(record)
+    monkeypatch.setattr(register, "append", track)
+    BatchOrchestrator(Provider(), register=register, source_action="delete").run([candidate], pin=None)
+    assert observed == [True, False]
+    pending, result = records(register)
+    assert pending["operation_id"] == result["operation_id"]
+    assert pending["event_id"] != result["event_id"]
+    assert result["source_deleted"] is True
+
+
+def test_final_delete_event_failure_keeps_durable_signature_receipt(workdir, monkeypatch):
+    candidate = document(workdir)
+    second = document(workdir, "second.pdf")
+    register = JsonlSignatureRegister(workdir / "signatures.jsonl")
+    append = register.append
+    def fail_final(record):
+        if record["event_type"] == "result":
+            raise OSError("disco pieno")
+        append(record)
+    monkeypatch.setattr(register, "append", fail_final)
+    first_job, second_job = BatchOrchestrator(Provider(), register=register, source_action="delete").run([candidate, second], pin=None)
+    assert first_job.signature_saved and first_job.register_error
+    assert not candidate.source.exists()
+    receipt, = records(register)
+    assert receipt["event_type"] == "source_delete_pending"
+    assert receipt["signature_saved"] is True
+    assert receipt["source_deleted"] is None
+    assert second_job.status is JobStatus.CANCELLED
+    assert second.source.exists()
+
+
+def test_recovery_replace_failure_preserves_original_and_backup(workdir, monkeypatch):
+    path = workdir / "signatures.jsonl"
+    original = b'{"ok":1}\n{"partial":'
+    path.write_bytes(original)
+    def fail(*args):
+        raise PermissionError("registro occupato")
+    monkeypatch.setattr("mfirma.signature_register.os.replace", fail)
+    with pytest.raises(PermissionError):
+        JsonlSignatureRegister(path).recover_incomplete_tail()
+    assert path.read_bytes() == original
+    assert next(workdir.glob("*.bak")).read_bytes() == original
+    assert not list(workdir.glob(".register-recovery-*"))
+
+
+@pytest.mark.parametrize("tail,expected", [(b'{"broken":', b''), (b'{"ok":2}', b'{"ok":2}\n')])
+def test_recovery_preserves_backup_and_complete_records(workdir, tail, expected):
+    path = workdir / "signatures.jsonl"
+    original = b'{"ok":1}\n' + tail
+    path.write_bytes(original)
+    register = JsonlSignatureRegister(path)
+    backup = register.recover_incomplete_tail()
+    assert backup.read_bytes() == original
+    assert path.read_bytes() == b'{"ok":1}\n' + expected
+    register.prepare()
+    register.append({"ok":3})
+
+
+def test_recovery_refuses_damage_in_complete_lines(workdir):
+    path = workdir / "signatures.jsonl"
+    original = b'broken\n{"partial":'
+    path.write_bytes(original)
+    with pytest.raises(ValueError, match="prima della coda"):
+        JsonlSignatureRegister(path).recover_incomplete_tail()
+    assert path.read_bytes() == original
+    assert next(workdir.glob("*.bak")).read_bytes() == original
+
+
+def test_recovery_backup_failure_leaves_original_untouched(workdir, monkeypatch):
+    path = workdir / "signatures.jsonl"
+    path.write_bytes(b'{"partial":')
+    original_open = Path.open
+    def fail_backup(self, *args, **kwargs):
+        if self.suffix == ".bak":
+            raise PermissionError("backup denied")
+        return original_open(self, *args, **kwargs)
+    monkeypatch.setattr(Path, "open", fail_backup)
+    with pytest.raises(PermissionError):
+        JsonlSignatureRegister(path).recover_incomplete_tail()
+    assert path.read_bytes() == b'{"partial":'

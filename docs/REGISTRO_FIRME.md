@@ -9,7 +9,7 @@ La pagina Cronologia indica il percorso effettivo e consente di aprire la
 cartella del registro. Se l'applicazione usa una configurazione in un'altra
 directory, anche registro e identità della postazione sono in quella directory.
 
-## Dati per documento (schema_version 1)
+## Dati per documento (campi comuni alle versioni 1 e 2)
 
 | Campo | Contenuto |
 |---|---|
@@ -44,6 +44,17 @@ true e `error_code` è `SOURCE_DELETE_FAILED`.
 
 ## Scrittura e problemi
 
+Le nuove righe usano `schema_version: 2`, con `event_id` univoco,
+`event_type` e `source_deleted` (true, false o null se non accertato).
+Le vecchie righe versione 1 restano inalterate.
+Per la cancellazione si scrive prima un evento `source_delete_pending`,
+sincronizzato su disco, e solo dopo si elimina l'originale e si scrive un
+evento `result` con lo stesso `operation_id`. Se la prima scrittura fallisce,
+l'originale rimane. Se manca il secondo evento, la firma è registrata ma
+l'esito della cancellazione richiede verifica manuale: non va dedotto dal solo
+evento preliminare. La sostituzione dell'originale resta distinta e non è
+transazionale con il registro.
+
 Il worker scrive e sincronizza ogni riga su disco prima di passare al documento
 successivo. Sono registrati anche errori, file saltati e annullamenti. Il
 registro viene controllato prima di aprire la sessione di firma: se non è
@@ -55,9 +66,14 @@ firmato. Non è possibile garantire una registrazione su un disco non scrivibile
 Il registro JSONL e il PDF sono due file distinti: un arresto del processo o
 della macchina tra i due salvataggi può richiedere una riconciliazione manuale.
 
-Una riga finale incompleta viene rilevata e conservata senza sovrascriverla;
-prima di riprendere le firme, copiare il registro per sicurezza e far verificare
-l'ultima registrazione. Non eliminare l'intero registro per risolvere un errore.
+Una riga finale incompleta blocca la firma. L'interfaccia propone un recupero
+con conferma (predefinita: No): crea un backup integrale `.bak`, sincronizzato
+su disco, e conserva tutte le righe JSON leggibili. Se l'ultima riga è completa
+aggiunge soltanto il terminatore; altrimenti la parte incompleta resta nel backup.
+Danni nelle righe già terminate richiedono controllo manuale e non modificano
+il registro. Dopo il recupero nessuna firma parte automaticamente: controllare
+gli esiti dell'operazione interrotta e richiedere nuovamente la firma.
+Non eliminare l'intero registro per risolvere un errore.
 Prevedere copie di sicurezza: il JSONL è modificabile da chi ha accesso alla
 cartella e non costituisce un archivio immodificabile.
 
@@ -72,7 +88,8 @@ registrato alla prima creazione dell'identità.
 Il registro espone un'interfaccia separata dal motore di firma; schema,
 identificativi globali e date UTC consentiranno l'alimentazione di un database
 comune da più postazioni. In una fase futura l'invio dovrà essere ripetibile
-senza duplicazioni, usando operation_id come chiave e mantenendo uno stato di
+senza duplicazioni, usando event_id per gli eventi versione 2 e operation_id
+per raggrupparli (e per le righe versione 1), mantenendo uno stato di
 sincronizzazione separato dal registro locale. Nessun invio, connessione al
 database o sincronizzazione è implementato in questa versione.
 
