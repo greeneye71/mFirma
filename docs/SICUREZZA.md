@@ -8,8 +8,12 @@
   comando.
 - L'ID PKCS#11 salvato per associare certificato e chiave è un identificativo
   pubblico, non contiene la chiave privata e non consente di ricostruirla.
-- `Leggi card…` accede soltanto ai certificati pubblici e ai relativi metadati;
+- La lettura della tessera a ogni firma accede ai certificati pubblici e ai relativi metadati;
   non richiede il PIN e non legge né esporta la chiave privata.
+- Tessera e certificato vengono scelti per il singolo batch. Le preferenze
+  facoltative sono associate a middleware e seriale, vengono verificate sulla
+  lettura corrente e non evitano la conferma del certificato. Le precedenti
+  selezioni globali non vengono utilizzate.
 - Il dialogo Qt consegna il PIN direttamente al worker una sola volta e pulisce
   il campo; stato globale, configurazione, cronologia e segnali Qt non lo
   contengono.

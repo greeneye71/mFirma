@@ -63,18 +63,14 @@ class CertificateTableModel(QAbstractTableModel):
 
     def __init__(self, candidate: ModuleCandidate | TokenCandidate, parent=None):
         super().__init__(parent)
-        details = {item.label: item for item in candidate.certificates}
-        labels = sorted(
-            candidate.certificate_labels,
-            key=lambda label: (
-                label not in candidate.document_signing_labels,
-                label.casefold(),
-            ),
+        certificates = candidate.certificates or tuple(
+            CertificateCandidate(label=label, content_commitment=label in candidate.document_signing_labels)
+            for label in candidate.certificate_labels
         )
-        self._certificates = tuple(
-            details.get(label, CertificateCandidate(label=label)) for label in labels
-        )
-        self._document_signing_labels = frozenset(candidate.document_signing_labels)
+        self._certificates = tuple(sorted(
+            certificates,
+            key=lambda item: (not item.content_commitment, item.label.casefold(), item.id_hex),
+        ))
 
     def rowCount(self, parent=QModelIndex()) -> int:  # noqa: N802
         return 0 if parent.isValid() else len(self._certificates)
@@ -112,7 +108,7 @@ class CertificateTableModel(QAbstractTableModel):
         return self._certificates[row] if 0 <= row < len(self._certificates) else None
 
     def _purpose(self, certificate: CertificateCandidate) -> str:
-        if certificate.label in self._document_signing_labels:
+        if certificate.content_commitment:
             return "Firma documenti"
         if certificate.digital_signature:
             return "Firma / autenticazione"

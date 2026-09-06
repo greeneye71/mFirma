@@ -113,7 +113,7 @@ class ResultPage(QWidget):
         folders = {
             job.destination.parent
             for job in jobs
-            if job.status is JobStatus.SUCCEEDED
+            if job.status is JobStatus.SUCCEEDED or job.error_code == "SOURCE_DELETE_FAILED"
         }
         self._common_folder = next(iter(folders)) if len(folders) == 1 else None
         self.open_folder_button.setEnabled(self._common_folder is not None)

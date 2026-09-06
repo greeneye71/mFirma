@@ -17,8 +17,9 @@ def test_decode_pkcs11_id_rejects_invalid_hex():
         _decode_pkcs11_id("not-hex")
 
 
+@pytest.mark.parametrize("label", ["Certificate label", ""])
 def test_provider_uses_certificate_id_for_private_key(
-    workdir, monkeypatch
+    workdir, monkeypatch, label
 ):
     module = workdir / "module.dll"
     module.touch()
@@ -48,7 +49,7 @@ def test_provider_uses_certificate_id_for_private_key(
         module_path=str(module),
         token_label="TOKEN",
         token_serial="53455249414c",
-        certificate_label="Certificate label",
+        certificate_label=label,
         certificate_id="445333",
     )
     provider = Pkcs11SigningProvider(config, SignatureConfig())

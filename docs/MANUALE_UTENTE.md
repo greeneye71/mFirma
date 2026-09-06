@@ -111,16 +111,12 @@ riporta la finestra dentro un monitor disponibile.
 
 ## Configurazione iniziale
 
-Nella parte superiore della finestra compilare:
+In `Impostazioni` compilare:
 
 | Campo | Significato |
 |---|---|
 | Cartella da firmare | Radice che contiene una sottocartella per ogni persona |
 | DLL PKCS#11 | Libreria installata dal middleware; usare `Rileva…` o `Sfoglia…` |
-| Token | Etichetta del token, compilata dalla lettura quando possibile |
-| Seriale (hex) | Identificatore pubblico compilato automaticamente; non è modificabile |
-| Certificato | Etichetta del certificato di firma; usare `Leggi card…` per sceglierla |
-| Chiave | Etichetta della chiave privata, solo se diversa dal certificato |
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
 | Aspetto | `Completo` (240 × 92 pt) oppure `Compatto` (190 × 68 pt) |
 
@@ -142,47 +138,40 @@ controllo non richiede il PIN e può durare alcuni secondi.
 
 La finestra mostra percorso, eventuali token collegati e origine della
 candidata. Selezionare una riga e premere `Usa selezionata`, oppure fare doppio
-clic. Quando viene rilevata una sola etichetta di token o certificato e il campo
-corrispondente è vuoto, viene compilato automaticamente.
+clic, quindi salvare le impostazioni. Un middleware valido può comparire anche
+senza tessere inserite. Se la ricerca non trova nulla, usare `Sfoglia` e indicare
+la DLL documentata dal produttore.
 
-Se sono collegati più token o smart card, mFirma apre prima l'elenco dei
-dispositivi con etichetta, seriale, produttore, modello e slot. Scegliere il
-dispositivo da usare; il seriale pubblico permette di distinguere anche token
-con la stessa etichetta. Solo dopo vengono mostrati i certificati appartenenti
-al dispositivo scelto.
+### Scegliere il certificato al momento della firma
 
-Un middleware valido può comparire anche come `nessuno collegato` quando il
-token non è inserito. Se la ricerca non trova nulla, usare `Sfoglia…` e indicare
-la DLL documentata dal produttore. Dopo la scelta manuale mFirma legge
-automaticamente token e certificati pubblici dalla DLL selezionata.
+La configurazione comune contiene il middleware, senza un firmatario globale.
+Ogni persona inserisce la propria tessera prima di premere `Continua e firma`.
+L'anteprima serve a posizionare la firma e usa dati dimostrativi; i dati reali
+del firmatario vengono letti dalla tessera durante il flusso di firma.
 
-Se viene trovata una sola etichetta di certificato, il campo `Certificato`
-viene compilato automaticamente. Anche in presenza di più certificati, mFirma
-sceglie automaticamente l'unico che dichiara l'uso `contentCommitment`, tipico
-della firma di documenti. Negli altri casi si apre una finestra di scelta che
-mostra l'uso rilevato: selezionare il certificato di firma e premere
-`Usa certificato`. Questa lettura non richiede il PIN.
+1. Dopo `Continua e firma`, mFirma rilegge i dispositivi e i certificati pubblici.
+2. Se sono presenti più tessere, scegliere quella da usare nell'elenco con
+   etichetta, seriale, produttore, modello e slot.
+3. Scegliere il certificato tra quelli della tessera: l'elenco mostra etichetta,
+   uso rilevato, intestatario, emittente e scadenza. L'uso `contentCommitment`
+   viene indicato come `Firma documenti`.
+4. Facoltativamente selezionare `Ricorda la scelta per questa tessera`.
+5. Premere `Usa certificato`, controllare intestatario e tessera nel dialogo PIN,
+   quindi confermare la firma.
 
-mFirma conserva anche l'ID pubblico del certificato e lo usa per trovare la
-chiave privata corrispondente. Il campo `Chiave (opz.)` può quindi restare vuoto
-anche quando certificato e chiave hanno etichette diverse.
+La preferenza memorizza solo l'ID pubblico del certificato, associato al
+middleware e al seriale della tessera. Alla firma successiva sulla stessa
+tessera viene preselezionato il certificato, ma occorre ancora confermarlo.
+Se il certificato non è più presente viene proposta una nuova scelta. Togliere
+la spunta per dimenticare la preferenza della tessera corrente. Il PIN non
+viene mai memorizzato. Certificati senza ID pubblico non possono essere ricordati.
 
-### Leggere i certificati presenti sulla card
-
-Dopo aver scelto la DLL e collegato la smart card o il token, premere
-`Leggi card…`. Si apre l'elenco dei certificati pubblici esposti dal dispositivo
-con:
-
-- etichetta PKCS#11;
-- uso rilevato, con `Firma documenti` in evidenza quando è dichiarato
-  `contentCommitment`;
-- intestatario ed emittente;
-- data di scadenza.
-
-Selezionare la riga corretta e premere `Usa certificato`, oppure fare doppio
-clic. Il campo `Certificato` viene aggiornato e l'ID pubblico associato viene
-conservato per individuare la chiave privata. La lettura non richiede il PIN e
-non accede alla chiave privata.
+Le vecchie selezioni globali non vengono usate per firmare. La scelta del
+certificato e della relativa chiave vale soltanto per il batch corrente.
+Il seriale identifica la tessera anche se un'altra ha la stessa etichetta:
+se viene sostituita prima dell'apertura della sessione, la firma non ripiega
+automaticamente sull'altra tessera. Se il middleware non espone il seriale o
+certificati pubblici leggibili, il flusso si interrompe con un messaggio.
 
 ## Caricare i documenti
 
@@ -256,14 +245,29 @@ dal token e non può essere imposto dall'applicazione.
 
 ## Risultato
 
-Per `documento.pdf` viene creato, nella stessa cartella:
+Per impostazione predefinita, per `documento.pdf` viene creato nella stessa cartella:
 
 ```text
 documento_firmato.pdf
 ```
 
-Il sorgente non viene modificato né cancellato. Se il file di destinazione
-esiste già, il documento viene saltato senza sovrascriverlo.
+In `Impostazioni → Output`, scegli la cartella con `Sfoglia` oppure lascia il
+campo vuoto per usare la cartella dell'originale. Seleziona l'azione sul file
+originale e premi `Salva impostazioni` prima di avviare la firma:
+
+- `Conserva l'originale`: salva la copia firmata con il suffisso configurato.
+- `Sovrascrivi l'originale con il file firmato`: sostituisce l'originale mantenendo
+  il suo nome e percorso; cartella di output e suffisso non vengono usati.
+- `Elimina l'originale dopo il salvataggio`: salva la copia firmata nella cartella
+  scelta, quindi elimina l'originale senza passare dal Cestino.
+
+La sovrascrittura e l'eliminazione rimuovono la versione originale. Avvengono
+solo dopo la firma e i controlli sul file temporaneo. Se il sorgente risulta
+cambiato durante la firma, l'operazione viene fermata per quel documento.
+Se una copia di destinazione esiste già (anche per nomi uguali provenienti da
+cartelle diverse), il documento viene saltato e il suo originale conservato.
+Se fallisce solo l'eliminazione, il risultato segnala l'errore e mostra il
+percorso della copia firmata già salvata.
 
 Un output viene pubblicato con il nome definitivo solo dopo che il programma ha
 verificato la presenza di una nuova firma e la sua integrità crittografica.

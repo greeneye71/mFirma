@@ -27,6 +27,27 @@ from mfirma.ui.workers import (
 )
 
 
+def test_output_settings_roundtrip_and_overwrite_controls(qtbot, workdir):
+    page = SettingsPage(AppConfig())
+    qtbot.addWidget(page)
+    page.output_directory.setText(str(workdir / "firmati"))
+    page.source_action.setCurrentIndex(page.source_action.findData("delete"))
+    repository = ConfigRepository(workdir / "config.json")
+    repository.save(page.build_config())
+    restored = repository.load()
+    assert restored.output.source_action == "delete"
+    assert restored.output.directory == str(workdir / "firmati")
+    page.load_config(restored)
+    assert page.output_directory.isEnabled()
+    page.source_action.setCurrentIndex(page.source_action.findData("overwrite"))
+    assert not page.output_directory.isEnabled()
+    assert not page.output_browse.isEnabled()
+    assert not page.output_suffix.isEnabled()
+    assert page.build_config().output.source_action == "overwrite"
+    page.source_action.setCurrentIndex(page.source_action.findData("keep"))
+    assert page.output_directory.isEnabled()
+
+
 def _module(workdir, *, multiple: bool = False) -> ModuleCandidate:
     certificates = (
         CertificateCandidate(
@@ -78,8 +99,7 @@ def test_settings_page_roundtrip_all_fields_and_variant_defaults(qtbot):
     page.monitor_root.setText(r"\\server\Da firmare")
     page.recursive.setChecked(False)
     page.stability_seconds.setValue(12)
-    page.token_label.setText("Token A")
-    page.key_label.setText("Chiave manuale")
+    page.module_path.setText("vendor.dll")
     page.preset.setCurrentIndex(page.preset.findData("top_left"))
     page.appearance_variant.setCurrentIndex(
         page.appearance_variant.findData("compact")
@@ -94,9 +114,9 @@ def test_settings_page_roundtrip_all_fields_and_variant_defaults(qtbot):
     assert updated.monitor.root == r"\\server\Da firmare"
     assert updated.monitor.recursive_within_person is False
     assert updated.monitor.stability_seconds == 12
-    assert updated.pkcs11.token_label == "Token A"
+    assert updated.pkcs11.token_label == ""
     assert updated.pkcs11.token_serial == ""
-    assert updated.pkcs11.key_label == "Chiave manuale"
+    assert updated.pkcs11.key_label == ""
     assert updated.signature.preset == "top_left"
     assert updated.signature.appearance_variant == "compact"
     assert updated.signature.width_points == 190.0
@@ -123,27 +143,28 @@ def test_settings_controls_have_accessible_names(qtbot):
 
     assert page.monitor_root.accessibleName() == "Cartella monitorata"
     assert page.module_path.accessibleName() == "DLL PKCS11"
-    assert page.certificate_label.accessibleName() == "Etichetta certificato"
+    assert not hasattr(page, "certificate_label")
     assert page.reason.accessibleName() == "Motivo firma opzionale"
     assert page.save_button.accessibleName() == "Salva impostazioni"
 
 
-def test_module_candidate_sets_token_certificate_and_public_id(qtbot, workdir):
-    page = SettingsPage(AppConfig())
+def test_module_selection_does_not_save_a_global_identity(qtbot, workdir):
+    config = AppConfig()
+    config.pkcs11.token_label = "Persona precedente"
+    config.pkcs11.certificate_label = "Vecchio certificato"
+    config.pkcs11.certificate_id = "01"
+    config.pkcs11.key_label = "Vecchia chiave"
+    page = SettingsPage(config)
     qtbot.addWidget(page)
     candidate = _module(workdir)
-
-    assert page.apply_module_candidate(candidate) is False
-    config = page.build_config()
-
-    assert config.pkcs11.module_path == str(candidate.path)
-    assert config.pkcs11.token_label == "Token Firma"
-    assert config.pkcs11.token_serial == "5345522d31"
-    assert config.pkcs11.certificate_label == "Firma documenti"
-    assert config.pkcs11.certificate_id == "445333"
-
-    page.module_path.setText(str(workdir / "altra.dll"))
-    assert page.build_config().pkcs11.certificate_id == ""
+    page.apply_module_candidate(candidate)
+    updated = page.build_config()
+    assert updated.pkcs11.module_path == str(candidate.path)
+    assert updated.pkcs11.token_label == ""
+    assert updated.pkcs11.token_serial == ""
+    assert updated.pkcs11.certificate_label == ""
+    assert updated.pkcs11.certificate_id == ""
+    assert updated.pkcs11.key_label == ""
 
 
 def test_discovery_dialogs_expose_real_candidates(qtbot, workdir):
@@ -164,52 +185,17 @@ def test_discovery_dialogs_expose_real_candidates(qtbot, workdir):
     assert token_dialog.selected_token() == candidate.tokens[0]
 
 
-def test_selecting_one_of_multiple_tokens_keeps_its_certificate_id(
-    qtbot, workdir
-):
-    first_certificate = CertificateCandidate(
-        label="Firma", id_hex="01", content_commitment=True
-    )
-    second_certificate = CertificateCandidate(
-        label="Firma", id_hex="02", content_commitment=True
-    )
-    first = TokenCandidate(
-        slot_id=1,
-        label="Token uguale",
-        serial="SER-A",
-        serial_hex="5345522d41",
-        certificates=(first_certificate,),
-    )
-    second = TokenCandidate(
-        slot_id=2,
-        label="Token uguale",
-        serial="SER-B",
-        serial_hex="5345522d42",
-        certificates=(second_certificate,),
-    )
-    candidate = ModuleCandidate(
-        path=workdir / "vendor-pkcs11.dll",
-        architecture="x64",
-        source="test",
-        token_labels=("Token uguale",),
-        certificate_labels=("Firma",),
-        document_signing_labels=("Firma",),
-        certificate_ids=(("Firma", "01"),),
-        certificates=(first_certificate,),
-        tokens=(first, second),
-    )
-    page = SettingsPage(AppConfig())
-    qtbot.addWidget(page)
-
-    assert page.apply_module_candidate(candidate) is False
-    assert page.selected_token(candidate) is None
-    assert page.select_token(candidate, second) is False
-    config = page.build_config()
-
-    assert config.pkcs11.token_label == "Token uguale"
-    assert config.pkcs11.token_serial == "5345522d42"
-    assert config.pkcs11.certificate_label == "Firma"
-    assert config.pkcs11.certificate_id == "02"
+def test_certificate_dialog_preserves_duplicate_labels_and_selects_by_id(qtbot):
+    first = CertificateCandidate(label="Firma", id_hex="01", subject="CN=Primo")
+    second = CertificateCandidate(label="Firma", id_hex="02", subject="CN=Secondo")
+    token = TokenCandidate(slot_id=1, certificates=(first, second))
+    dialog = CertificateSelectionDialog(token, current_id="02", allow_remember=True)
+    qtbot.addWidget(dialog)
+    assert dialog.model.rowCount() == 2
+    assert dialog.selected_certificate() == second
+    assert dialog.remember_choice.isChecked()
+    dialog.table.selectRow(0)
+    assert dialog.selected_certificate() == first
 
 
 def test_discovery_controller_runs_probe_outside_gui_thread(qtbot, workdir):

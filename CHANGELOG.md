@@ -2,6 +2,13 @@
 
 ## Non rilasciato
 
+- spostata la scelta della tessera e del certificato nel flusso di firma, con
+  nuova lettura a ogni batch e identità separata dalle impostazioni comuni;
+- aggiunta la preferenza facoltativa del certificato per middleware e seriale
+  della tessera, riproposta con conferma; supportate etichette di certificato uguali;
+- aggiunta in Output la scelta della cartella dei file firmati e dell'azione
+  sull'originale: conservazione, sostituzione dopo la firma o eliminazione dopo
+  il salvataggio; protezione dalle collisioni e segnalazione degli errori di rimozione;
 - aggiunto l'archivio locale, atomico e versionato degli ultimi 100 batch reali;
 - completata la pagina `Cronologia` con riepilogo, dettaglio per documento e
   copia dell'identificativo batch;

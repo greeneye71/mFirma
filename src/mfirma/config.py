@@ -18,6 +18,8 @@ class MonitorConfig:
 @dataclass(slots=True)
 class OutputConfig:
     suffix: str = "_firmato"
+    directory: str = ""
+    source_action: str = "keep"
 
 
 @dataclass(slots=True)
@@ -39,6 +41,7 @@ class Pkcs11Config:
     certificate_label: str = ""
     certificate_id: str = ""
     key_label: str = ""
+    remembered_certificates: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -50,6 +53,12 @@ class AppConfig:
     pkcs11: Pkcs11Config = field(default_factory=Pkcs11Config)
 
     def validate(self) -> None:
+        preferences = self.pkcs11.remembered_certificates
+        if not isinstance(preferences, dict) or any(
+            not isinstance(key, str) or not isinstance(value, str)
+            for key, value in preferences.items()
+        ):
+            raise ValueError("Preferenze certificati non valide")
         if self.config_version != 1:
             raise ValueError("Versione configurazione non supportata")
         if not 0 <= self.monitor.stability_seconds <= 3600:
@@ -75,6 +84,10 @@ class AppConfig:
             if not serial:
                 raise ValueError("Seriale PKCS#11 del token vuoto")
         suffix = self.output.suffix
+        if self.output.source_action not in {"keep", "overwrite", "delete"}:
+            raise ValueError("Azione sul file originale non valida")
+        if not isinstance(self.output.directory, str):
+            raise ValueError("Cartella di output non valida")
         if not suffix or any(char in suffix for char in '<>:"/\\|?*'):
             raise ValueError("Suffisso di output non valido")
 

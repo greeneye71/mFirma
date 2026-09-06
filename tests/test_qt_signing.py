@@ -4,6 +4,8 @@ import threading
 from contextlib import contextmanager
 from pathlib import Path
 
+import pytest
+
 from PySide6.QtCore import QThreadPool
 
 from mfirma.batch import BatchOrchestrator
@@ -176,10 +178,13 @@ def test_result_page_sanitizes_technical_errors_and_filters_problems(qtbot, work
     assert page.proxy.rowCount() == 1
 
 
-def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir):
+@pytest.mark.parametrize("action", ["keep", "overwrite", "delete"])
+def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir, action):
     document = _candidate(workdir / "documento.pdf")
     repository = ConfigRepository(workdir / "config.json")
     config = AppConfig()
+    config.output.directory = str(workdir / "firmati")
+    config.output.source_action = action
     config.pkcs11.certificate_label = "Certificato simulato"
     repository.save(config)
     window = MFirmaQtWindow(repository, auto_scan=False)
@@ -195,11 +200,14 @@ def test_main_window_runs_fake_batch_and_shows_real_result(qtbot, workdir):
                 shared_rect=NormalizedDisplayRect(0.1, 0.1, 0.4, 0.15),
             ),
             pin="pin-solo-test",
+            certificate_label="Certificato simulato",
         )
 
     assert window.stackedWidget.currentWidget() is window.result_page
     assert window.result_page.model.jobs[0].status is JobStatus.SUCCEEDED
-    assert (workdir / "documento_firmato.pdf").read_bytes().endswith(b"SIGNED")
+    destination = document.source if action == "overwrite" else workdir / "firmati" / "documento_firmato.pdf"
+    assert destination.read_bytes().endswith(b"SIGNED")
+    assert document.source.exists() == (action != "delete")
     assert window.progress_page.progress_bar.value() == 1
     assert window.progress_page.succeeded_label.text() == "1"
     assert (

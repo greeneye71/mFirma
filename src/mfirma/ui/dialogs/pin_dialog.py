@@ -13,7 +13,7 @@ from qfluentwidgets import (
 
 
 class PinDialog(QDialog):
-    def __init__(self, document_count: int, parent=None):
+    def __init__(self, document_count: int, parent=None, *, certificate: str = ""):
         super().__init__(parent)
         self.setWindowTitle("Inserisci il PIN del dispositivo")
         self.setModal(True)
@@ -27,6 +27,10 @@ class PinDialog(QDialog):
         )
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
+        self.certificate_label = BodyLabel(certificate, self)
+        self.certificate_label.setWordWrap(True)
+        self.certificate_label.setVisible(bool(certificate))
+        layout.addWidget(self.certificate_label)
         self.pin_edit = LineEdit(self)
         self.pin_edit.setObjectName("pinEntry")
         self.pin_edit.setAccessibleName("PIN del dispositivo")

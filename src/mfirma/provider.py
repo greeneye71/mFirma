@@ -90,8 +90,8 @@ class Pkcs11SigningProvider:
         module = Path(self.config.module_path).expanduser()
         if not module.is_file():
             raise ProviderConfigurationError(f"DLL PKCS#11 non trovata: {module}")
-        if not self.config.certificate_label:
-            raise ProviderConfigurationError("Indicare l'etichetta del certificato")
+        if not self.config.certificate_label and not self.config.certificate_id:
+            raise ProviderConfigurationError("Selezionare il certificato di firma")
 
     @contextmanager
     def open(self, pin: str | None) -> Iterator[SigningSession]:

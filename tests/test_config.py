@@ -14,6 +14,7 @@ def test_config_roundtrip_has_no_pin_field(workdir: Path):
     config.pkcs11.token_serial = "5345522d31"
     config.pkcs11.certificate_label = "Firma"
     config.pkcs11.certificate_id = "445333"
+    config.pkcs11.remembered_certificates = {"middleware|5345522d31": "445333"}
 
     repository = ConfigRepository(path)
     repository.save(config)

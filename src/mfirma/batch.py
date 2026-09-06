@@ -31,16 +31,27 @@ def _redact_secret(message: str, secret: str | None) -> str:
 
 
 class BatchOrchestrator:
-    def __init__(self, provider: SigningProvider, output_suffix: str = "_firmato"):
+    def __init__(
+        self, provider: SigningProvider, output_suffix: str = "_firmato", *,
+        output_directory: Path | None = None, source_action: str = "keep",
+    ):
+        if source_action not in {"keep", "overwrite", "delete"}:
+            raise ValueError("Azione sul file originale non valida")
         self.provider = provider
         self.output_suffix = output_suffix
+        self.output_directory = output_directory
+        self.source_action = source_action
 
     def build_jobs(self, documents: Iterable[DocumentCandidate]) -> list[SignJob]:
         unique: dict[str, DocumentCandidate] = {}
         for document in documents:
             unique[str(document.source.resolve()).casefold()] = document
         return [
-            SignJob(document, destination_for(document.source, self.output_suffix))
+            SignJob(document, destination_for(
+                document.source, self.output_suffix,
+                directory=self.output_directory,
+                overwrite_source=self.source_action == "overwrite",
+            ))
             for document in unique.values()
         ]
 
@@ -163,7 +174,9 @@ class BatchOrchestrator:
                 or stat.st_mtime_ns != job.document.modified_ns
             ):
                 raise FileChangedError("Il file è cambiato dopo la selezione")
-            temporary = create_temporary_output(job.destination)
+            temporary = create_temporary_output(
+                job.destination, overwrite=self.source_action == "overwrite",
+            )
             job.status = JobStatus.SIGNING
             emit(BatchPhase.SIGNING)
             if events or placement is not None or normalized_rect is not None:
@@ -179,8 +192,25 @@ class BatchOrchestrator:
                     job.document.source, temporary
                 )
             emit(BatchPhase.PUBLISHING)
-            publish_temporary(temporary, job.destination)
+            if self.source_action != "keep":
+                self._check_source_unchanged(job)
+            publish_temporary(
+                temporary, job.destination, overwrite=self.source_action == "overwrite",
+            )
             temporary = None
+            if self.source_action == "delete":
+                try:
+                    self._check_source_unchanged(job)
+                    job.document.source.unlink()
+                except (OSError, FileChangedError) as exc:
+                    job.status = JobStatus.FAILED
+                    job.error_code = "SOURCE_DELETE_FAILED"
+                    job.message = _redact_secret(
+                        f"File firmato salvato in {job.destination}; originale non eliminato: {exc}",
+                        secret,
+                    )
+                    self._log_job_problem(job)
+                    return
             job.status = JobStatus.SUCCEEDED
             job.message = str(job.destination)
         except OutputExistsError as exc:
@@ -201,6 +231,13 @@ class BatchOrchestrator:
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+    @staticmethod
+    def _check_source_unchanged(job: SignJob) -> None:
+        stat = job.document.source.stat()
+        if (stat.st_size != job.document.size
+                or stat.st_mtime_ns != job.document.modified_ns):
+            raise FileChangedError("Il file è cambiato durante la firma")
 
     @staticmethod
     def _log_job_problem(job: SignJob) -> None:

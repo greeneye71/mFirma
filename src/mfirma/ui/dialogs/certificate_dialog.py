@@ -7,9 +7,9 @@ from PySide6.QtWidgets import (
     QTableView,
     QVBoxLayout,
 )
-from qfluentwidgets import BodyLabel, PrimaryPushButton, PushButton, SubtitleLabel
+from qfluentwidgets import BodyLabel, CheckBox, PrimaryPushButton, PushButton, SubtitleLabel
 
-from ...discovery import ModuleCandidate, TokenCandidate
+from ...discovery import CertificateCandidate, ModuleCandidate, TokenCandidate
 from ..models import CertificateTableModel
 
 
@@ -19,6 +19,8 @@ class CertificateSelectionDialog(QDialog):
         candidate: ModuleCandidate | TokenCandidate,
         *,
         current_label: str = "",
+        current_id: str = "",
+        allow_remember: bool = False,
         parent=None,
     ):
         super().__init__(parent)
@@ -50,6 +52,11 @@ class CertificateSelectionDialog(QDialog):
             self.table.setColumnWidth(column, width)
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table, 1)
+        self.remember_choice = CheckBox("Ricorda la scelta per questa tessera", self)
+        self.remember_choice.setVisible(allow_remember)
+        self.remember_choice.setChecked(allow_remember and bool(current_id))
+        self.remember_choice.setToolTip("La scelta viene riproposta soltanto per questa tessera e resta da confermare.")
+        layout.addWidget(self.remember_choice)
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
@@ -66,13 +73,27 @@ class CertificateSelectionDialog(QDialog):
         selected_row = 0
         for row in range(self.model.rowCount()):
             certificate = self.model.certificate(row)
-            if certificate and certificate.label == current_label:
+            if certificate and (
+                certificate.id_hex == current_id if current_id
+                else certificate.label == current_label
+            ):
                 selected_row = row
                 break
         if self.model.rowCount():
             self.table.selectRow(selected_row)
+        self.table.selectionModel().selectionChanged.connect(self._selection_changed)
+        self._selection_changed()
+
+    def _selection_changed(self, *_args) -> None:
+        certificate = self.selected_certificate()
+        self.remember_choice.setEnabled(bool(certificate and certificate.id_hex))
+        if not self.remember_choice.isEnabled():
+            self.remember_choice.setChecked(False)
 
     def selected_label(self) -> str:
-        rows = self.table.selectionModel().selectedRows()
-        certificate = self.model.certificate(rows[0].row()) if rows else None
+        certificate = self.selected_certificate()
         return certificate.label if certificate else ""
+
+    def selected_certificate(self) -> CertificateCandidate | None:
+        rows = self.table.selectionModel().selectedRows()
+        return self.model.certificate(rows[0].row()) if rows else None

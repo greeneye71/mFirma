@@ -16,6 +16,7 @@ _STATUS_LABELS = {
 }
 
 _ERROR_MESSAGES = {
+    "SOURCE_DELETE_FAILED": "File firmato salvato; non è stato possibile eliminare l'originale.",
     "FILE_CHANGED": "Il documento è cambiato dopo la selezione.",
     "OUTPUT_EXISTS": "Esiste già un file con il nome di destinazione.",
     "PDF_INVALID": "Il PDF non può essere firmato.",
@@ -79,7 +80,7 @@ class BatchResultModel(QAbstractTableModel):
             job.document.source.name,
             job.document.person or "—",
             status_label(job.status),
-            str(job.destination) if job.status is JobStatus.SUCCEEDED else "—",
+            str(job.destination) if job.status is JobStatus.SUCCEEDED or job.error_code == "SOURCE_DELETE_FAILED" else "—",
             user_message(job),
         )
         return values[index.column()]

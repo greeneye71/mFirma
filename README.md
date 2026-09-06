@@ -63,11 +63,11 @@ e, se necessario, annulla il batch dopo il file corrente.
 Nella finestra:
 
 1. scegli la cartella monitorata;
-2. indica la DLL PKCS#11 e premi `Leggi card…` per vedere e scegliere il
-   certificato di firma;
+2. indica la DLL PKCS#11 e salva le impostazioni;
 3. aggiorna l'elenco o aggiungi PDF manualmente;
 4. seleziona più righe e premi `Prepara la firma`;
-5. controlla l'anteprima e inserisci il PIN. Lascia il PIN vuoto soltanto se il
+5. controlla l'anteprima e premi `Continua e firma`: scegli il certificato dalla
+   tessera inserita, poi inserisci il PIN. Lascia il PIN vuoto soltanto se il
    middleware usa il proprio dialogo protetto.
 
 Per aggiungere il comando classico `Firma PDF con mFirma` a Esplora file,
@@ -77,8 +77,10 @@ non firma immediatamente: inoltra fino a 100 PDF alla singola istanza dell'app,
 li seleziona nella dashboard e richiede comunque conferma. Per rimuoverlo usa
 `rimuovi_menu_esplora.cmd`.
 
-Il PIN non viene salvato. I file originali non vengono modificati e un output
-esistente viene saltato.
+Il PIN non viene salvato. In `Impostazioni → Output` puoi scegliere la cartella
+dei file firmati e se conservare, sovrascrivere o eliminare gli originali.
+Per impostazione predefinita gli originali vengono conservati; una copia firmata
+già esistente viene saltata.
 
 Per aggiungere una seconda firma allo stesso PDF, usa `Aggiungi PDF` sul primo
 output firmato e scegli preferibilmente un altro preset, così i due riquadri
@@ -108,10 +110,10 @@ Implementato:
 - configurazione JSON senza PIN;
 - probe PKCS#11 senza autenticazione e test del nucleo senza token.
 - rilevamento assistito delle DLL PKCS#11 x64 installate, senza richiesta PIN.
-- lettura delle etichette pubbliche e scelta del certificato dopo aver indicato
-  la DLL, con riconoscimento dell'uso `contentCommitment` per la firma documenti.
-- comando `Leggi card…` con elenco di etichetta, uso, intestatario, emittente e
-  scadenza dei certificati pubblici.
+- lettura della tessera e scelta del certificato a ogni firma, con elenco di
+  etichetta, uso, intestatario, emittente e scadenza dei certificati pubblici.
+- preferenza facoltativa per tessera e middleware: preseleziona il certificato
+  presente sulla tessera, richiedendone comunque la conferma; nessun firmatario globale.
 - scelta esplicita del token quando più dispositivi sono collegati, con
   associazione stabile tramite seriale pubblico anche per etichette uguali.
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
@@ -120,7 +122,7 @@ Implementato:
 - prima dashboard PySide6/Fluent con navigazione, modello `QTableView`, ricerca
   differita, filtro per persona, selezione stabile e scansione in worker Qt.
 - pagina impostazioni Qt completa, persistenza atomica, discovery DLL in worker
-  e scelta guidata di middleware e certificato pubblico.
+  e scelta guidata del middleware; certificato scelto nel flusso di firma.
 - pagina `Controlla e firma` con `QPdfView`, vero PDF sorgente, aspetto prodotto
   dal renderer condiviso, zoom, quattro preset e riquadro trascinabile e
   ridimensionabile in punti PDF.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl, Signal, Slot
@@ -16,10 +17,10 @@ from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from qfluentwidgets import FluentIcon, MSFluentWindow
 
 from ..batch import BatchOrchestrator
-from ..config import AppConfig, ConfigRepository
+from ..config import AppConfig, ConfigRepository, Pkcs11Config
 from ..discovery import ModuleCandidate
 from ..history import BatchHistoryRecord, HistoryRepository
-from ..models import SignaturePositionPlan
+from ..models import DocumentCandidate, SignaturePositionPlan
 from ..provider import Pkcs11SigningProvider, SigningProvider
 from ..scanner import ImportResult, ScanResult
 from .dialogs import (
@@ -69,6 +70,7 @@ class MFirmaQtWindow(MSFluentWindow):
         import_controller: FileImportController | None = None,
         history_controller: HistoryController | None = None,
         discovery_controller: DiscoveryController | None = None,
+        signing_discovery_controller: DiscoveryController | None = None,
         preview_controller: PreviewController | None = None,
         signing_controller: SigningController | None = None,
         window_state_repository: WindowStateRepository | None = None,
@@ -96,6 +98,10 @@ class MFirmaQtWindow(MSFluentWindow):
         self.discovery_controller = discovery_controller or DiscoveryController(
             self
         )
+        self.signing_discovery_controller = signing_discovery_controller or DiscoveryController(self)
+        self._pending_signing: tuple[
+            SignaturePositionPlan, tuple[DocumentCandidate, ...], AppConfig
+        ] | None = None
         self.preview_controller = preview_controller or PreviewController(self)
         self.signing_controller = signing_controller or SigningController(self)
         self.queue_page = QueuePage(self)
@@ -183,9 +189,9 @@ class MFirmaQtWindow(MSFluentWindow):
         self.result_page.openLogRequested.connect(self._open_log)
         self.settings_page.saveRequested.connect(self.save_settings)
         self.settings_page.browseRootRequested.connect(self.choose_monitor_root)
+        self.settings_page.browseOutputRequested.connect(self.choose_output_directory)
         self.settings_page.browseModuleRequested.connect(self.choose_module)
         self.settings_page.discoverRequested.connect(self.discover_modules)
-        self.settings_page.readCardRequested.connect(self.read_card)
         self.scan_controller.scanStarted.connect(
             lambda: self.queue_page.set_scan_state(ScanState.SCANNING)
         )
@@ -202,6 +208,8 @@ class MFirmaQtWindow(MSFluentWindow):
             self._discovery_succeeded
         )
         self.discovery_controller.operationFailed.connect(self._discovery_failed)
+        self.signing_discovery_controller.operationSucceeded.connect(self._signing_card_read)
+        self.signing_discovery_controller.operationFailed.connect(self._signing_card_failed)
         self.preview_controller.previewStarted.connect(
             lambda _document: self.preview_page.set_busy(True)
         )
@@ -209,17 +217,12 @@ class MFirmaQtWindow(MSFluentWindow):
         self.preview_controller.previewFailed.connect(self._preview_failed)
 
     def _update_operational_status(self) -> None:
-        config = self.config.pkcs11
-        if config.module_path and config.certificate_label:
-            state = DeviceState.READY
-        elif config.module_path:
-            state = DeviceState.CERTIFICATE_MISSING
-        else:
-            state = DeviceState.UNKNOWN
-        self.queue_page.set_device_status(
-            state,
-            token_label=config.token_label,
-            certificate_label=config.certificate_label,
+        self.queue_page.set_device_status(DeviceState.UNKNOWN)
+        self.queue_page.device_status.set_status(
+            "Middleware configurato" if self.config.pkcs11.module_path else "Da configurare"
+        )
+        self.queue_page.certificate_status.set_status(
+            "Da scegliere alla firma", "Inserisci la tua tessera"
         )
 
     @Slot()
@@ -258,6 +261,14 @@ class MFirmaQtWindow(MSFluentWindow):
             self.settings_page.monitor_root.setText(selected)
 
     @Slot()
+    def choose_output_directory(self) -> None:
+        selected = QFileDialog.getExistingDirectory(
+            self, "Cartella dei file firmati", self.settings_page.output_directory.text(),
+        )
+        if selected:
+            self.settings_page.output_directory.setText(selected)
+
+    @Slot()
     def choose_module(self) -> None:
         selected, _selected_filter = QFileDialog.getOpenFileName(
             self,
@@ -274,18 +285,6 @@ class MFirmaQtWindow(MSFluentWindow):
         configured = self.settings_page.selected_module_path
         extra_paths = (configured,) if configured else ()
         self.discovery_controller.discover(extra_paths)
-
-    @Slot()
-    def read_card(self) -> None:
-        path = self.settings_page.selected_module_path
-        if path is None:
-            QMessageBox.information(
-                self,
-                "Leggi card",
-                "Prima rileva o seleziona la DLL PKCS#11 del produttore.",
-            )
-            return
-        self.discovery_controller.inspect(path, show_certificates=True)
 
     @Slot(object)
     def _discovery_succeeded(self, outcome: DiscoveryOutcome) -> None:
@@ -326,66 +325,13 @@ class MFirmaQtWindow(MSFluentWindow):
                 "la DLL indicata dal produttore e che abbia la stessa architettura dell’app.",
             )
             return
-        self._apply_module_candidate(
-            result.candidates[0],
-            force_certificate_dialog=outcome.show_certificates,
-        )
+        self._apply_module_candidate(result.candidates[0])
 
     def _apply_module_candidate(
         self,
         candidate: ModuleCandidate,
-        *,
-        force_certificate_dialog: bool = False,
     ) -> None:
-        needs_confirmation = self.settings_page.apply_module_candidate(candidate)
-        certificate_inventory = candidate
-        if candidate.tokens:
-            token = self.settings_page.selected_token(candidate)
-            if len(candidate.tokens) > 1 and (
-                force_certificate_dialog or token is None
-            ):
-                token_dialog = TokenSelectionDialog(
-                    candidate,
-                    current_label=self.settings_page.token_label.text().strip(),
-                    current_serial=self.settings_page.token_serial.text().strip(),
-                    parent=self,
-                )
-                if token_dialog.exec() != QDialog.DialogCode.Accepted:
-                    return
-                token = token_dialog.selected_token()
-                if token is None:
-                    return
-                needs_confirmation = self.settings_page.select_token(
-                    candidate, token
-                )
-            if token is None:
-                QMessageBox.information(
-                    self,
-                    "Dispositivo di firma",
-                    "La DLL Ã¨ valida, ma non risultano token o smart card collegati.",
-                )
-                return
-            certificate_inventory = token
-
-        if not (force_certificate_dialog or needs_confirmation):
-            return
-        if not certificate_inventory.certificate_labels:
-            QMessageBox.information(
-                self,
-                "Certificati sulla card",
-                "La card è stata letta, ma non espone certificati pubblici senza "
-                "autenticazione. Alcuni middleware richiedono il proprio accesso protetto.",
-            )
-            return
-        dialog = CertificateSelectionDialog(
-            certificate_inventory,
-            current_label=self.settings_page.certificate_label.text().strip(),
-            parent=self,
-        )
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            label = dialog.selected_label()
-            if label:
-                self.settings_page.select_certificate(certificate_inventory, label)
+        self.settings_page.apply_module_candidate(candidate)
 
     @Slot(object, str)
     def _discovery_failed(
@@ -434,7 +380,7 @@ class MFirmaQtWindow(MSFluentWindow):
             return
         self.preview_page.set_documents(
             selected,
-            self.config.pkcs11.certificate_label,
+            "Da scegliere dalla tessera al momento della firma",
         )
         self.switchTo(self.preview_page)
         self._prepare_preview(0)
@@ -444,12 +390,7 @@ class MFirmaQtWindow(MSFluentWindow):
         documents = self.preview_page.documents
         if not 0 <= index < len(documents):
             return
-        details = self.settings_page.selected_certificate_details
-        identity = PreviewIdentity(
-            certificate_label=self.config.pkcs11.certificate_label,
-            subject=details.subject if details else "",
-            issuer=details.issuer if details else "",
-        )
+        identity = PreviewIdentity()
         self.preview_controller.prepare(
             documents[index],
             self.config.signature,
@@ -561,31 +502,178 @@ class MFirmaQtWindow(MSFluentWindow):
     @Slot(object)
     def request_signing(self, position_plan: SignaturePositionPlan) -> None:
         documents = self.preview_page.documents
-        if not documents or self.signing_controller.busy:
+        if not documents or self.signing_controller.busy or self._pending_signing is not None:
             return
-        provider = Pkcs11SigningProvider(
-            self.config.pkcs11,
-            self.config.signature,
-        )
-        try:
-            provider.validate()
-        except Exception as exc:
-            LOGGER.warning("Configurazione di firma non pronta: %s", exc)
+        if not self.config.pkcs11.module_path:
             QMessageBox.warning(
-                self,
-                "Dispositivo di firma",
-                "Completa DLL e certificato nelle Impostazioni prima di firmare.",
+                self, "Dispositivo di firma",
+                "Seleziona e salva la DLL PKCS#11 nelle Impostazioni prima di firmare.",
             )
             return
+        self._pending_signing = (position_plan, tuple(documents), deepcopy(self.config))
+        self.preview_page.setEnabled(False)
+        self.preview_page.certificate_label.setText("Lettura della tessera in corso…")
+        if not self.signing_discovery_controller.inspect(Path(self.config.pkcs11.module_path)):
+            self._finish_signing_request()
 
-        dialog = PinDialog(len(documents), self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
+    def _finish_signing_request(self) -> None:
+        self._pending_signing = None
+        self.preview_page.setEnabled(True)
+        self.preview_page.certificate_label.setText(
+            "Da scegliere dalla tessera al momento della firma"
+        )
+
+    @Slot(object, str)
+    def _signing_card_failed(self, operation, technical_message: str) -> None:
+        LOGGER.warning("Lettura tessera per la firma non riuscita: %s", technical_message)
+        self._finish_signing_request()
+        if not self._shutdown_requested:
+            QMessageBox.warning(
+                self, "Tessera di firma",
+                "Impossibile leggere la tessera. Verifica il collegamento e riprova.",
+            )
+
+    @Slot(object)
+    def _signing_card_read(self, outcome: DiscoveryOutcome) -> None:
+        pending = self._pending_signing
+        if pending is None:
             return
-        pin = dialog.take_pin()
         try:
-            self.start_batch(provider, position_plan, pin=pin)
+            position_plan, documents, config = pending
+            if (self._shutdown_requested
+                    or self.stackedWidget.currentWidget() is not self.preview_page
+                    or tuple(self.preview_page.documents) != documents):
+                return
+            candidates = outcome.result.candidates
+            module_path = Path(config.pkcs11.module_path).resolve()
+            candidate = next(
+                (item for item in candidates if item.path.resolve() == module_path), None
+            )
+            if candidate is None or not candidate.tokens:
+                QMessageBox.information(
+                    self, "Tessera di firma",
+                    "Nessuna tessera leggibile. Inserisci la tua tessera e riprova.",
+                )
+                return
+            if len(candidate.tokens) == 1:
+                token = candidate.tokens[0]
+            else:
+                token_dialog = TokenSelectionDialog(candidate, parent=self)
+                if token_dialog.exec() != QDialog.DialogCode.Accepted:
+                    return
+                token = token_dialog.selected_token()
+                if token is None:
+                    return
+            if not token.serial_hex:
+                QMessageBox.warning(
+                    self, "Tessera di firma",
+                    "Il middleware non fornisce il seriale della tessera: "
+                    "non è possibile identificarla in modo sicuro per questa firma.",
+                )
+                return
+            if not token.certificates:
+                QMessageBox.information(
+                    self, "Certificati sulla tessera",
+                    "La tessera non espone certificati pubblici leggibili. "
+                    "Verifica il middleware del produttore e riprova.",
+                )
+                return
+            preference_key = str(module_path).casefold() + "|" + token.serial_hex.casefold()
+            remembered_id = config.pkcs11.remembered_certificates.get(preference_key, "")
+            if not any(item.id_hex == remembered_id for item in token.certificates):
+                remembered_id = ""
+            certificate_dialog = CertificateSelectionDialog(
+                token, current_id=remembered_id, allow_remember=True, parent=self,
+            )
+            if certificate_dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            certificate = certificate_dialog.selected_certificate()
+            if certificate is None:
+                return
+            if certificate.id_hex and sum(
+                item.id_hex == certificate.id_hex for item in token.certificates
+            ) != 1:
+                QMessageBox.warning(
+                    self, "Certificato di firma",
+                    "Il middleware espone più certificati con lo stesso ID. "
+                    "Non è possibile identificare univocamente quello scelto.",
+                )
+                return
+            if not certificate.id_hex and sum(
+                item.label == certificate.label for item in token.certificates
+            ) != 1:
+                QMessageBox.warning(
+                    self, "Certificato di firma",
+                    "Il certificato non ha un ID e la sua etichetta non è univoca.",
+                )
+                return
+            # Identità esclusiva di questo batch: nessun dato della persona precedente.
+            runtime_pkcs11 = Pkcs11Config(
+                module_path=str(module_path),
+                token_label=token.label,
+                token_serial=token.serial_hex,
+                certificate_label=certificate.label,
+                certificate_id=certificate.id_hex,
+            )
+            provider = Pkcs11SigningProvider(runtime_pkcs11, config.signature)
+            try:
+                provider.validate()
+            except Exception as exc:
+                LOGGER.warning("Dispositivo di firma non pronto: %s", exc)
+                QMessageBox.warning(
+                    self, "Dispositivo di firma",
+                    "Il dispositivo selezionato non è pronto. Verifica il middleware e riprova.",
+                )
+                return
+            identity_text = "\n".join(filter(None, (
+                certificate.label, certificate.subject,
+                f"Tessera: {token.label} · {token.serial or token.serial_hex}",
+            )))
+            pin_dialog = PinDialog(len(documents), self, certificate=identity_text)
+            if pin_dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            pin = pin_dialog.take_pin()
+            try:
+                if self._shutdown_requested:
+                    return
+                self._remember_certificate(
+                    preference_key,
+                    certificate.id_hex if certificate_dialog.remember_choice.isChecked() else "",
+                )
+                if self._shutdown_requested:
+                    return
+                self.start_batch(
+                    provider, position_plan, pin=pin, documents=documents,
+                    batch_config=config,
+                    certificate_label=" · ".join(filter(None, (certificate.label, certificate.subject))),
+                )
+            finally:
+                pin = None
         finally:
-            pin = None
+            self._finish_signing_request()
+
+    def _remember_certificate(self, key: str, certificate_id: str) -> None:
+        config = deepcopy(self.config)
+        if certificate_id:
+            config.pkcs11.remembered_certificates[key] = certificate_id
+        else:
+            config.pkcs11.remembered_certificates.pop(key, None)
+        # Rimuove l'identità globale eventualmente lasciata dalle vecchie versioni.
+        config.pkcs11 = Pkcs11Config(
+            module_path=config.pkcs11.module_path,
+            remembered_certificates=config.pkcs11.remembered_certificates,
+        )
+        try:
+            self.repository.save(config)
+        except Exception:
+            LOGGER.warning("Preferenza del certificato non salvata")
+            QMessageBox.warning(
+                self, "Preferenza certificato",
+                "Non è stato possibile ricordare la scelta. La firma può proseguire.",
+            )
+            return
+        self.config = config
+        self.settings_page.update_remembered_certificates(config.pkcs11.remembered_certificates)
 
     def start_batch(
         self,
@@ -593,13 +681,21 @@ class MFirmaQtWindow(MSFluentWindow):
         position_plan: SignaturePositionPlan,
         *,
         pin: str | None,
+        documents: tuple[DocumentCandidate, ...] | None = None,
+        batch_config: AppConfig | None = None,
+        certificate_label: str = "",
     ) -> bool:
         """Avvia un batch Qt; usato anche dai test senza hardware."""
 
-        documents = self.preview_page.documents
+        documents = self.preview_page.documents if documents is None else documents
         if not documents:
             return False
-        orchestrator = BatchOrchestrator(provider, self.config.output.suffix)
+        config = batch_config or self.config
+        orchestrator = BatchOrchestrator(
+            provider, config.output.suffix,
+            output_directory=Path(config.output.directory) if config.output.directory else None,
+            source_action=config.output.source_action,
+        )
         self.progress_page.start(len(documents))
         self.switchTo(self.progress_page)
         started = self.signing_controller.start(
@@ -616,7 +712,7 @@ class MFirmaQtWindow(MSFluentWindow):
                 "Attendi il completamento del batch già avviato.",
             )
         else:
-            self._active_certificate_label = self.config.pkcs11.certificate_label
+            self._active_certificate_label = certificate_label
         return started
 
     @Slot(object)
@@ -648,7 +744,7 @@ class MFirmaQtWindow(MSFluentWindow):
         QMessageBox.warning(
             self,
             "Firma non completata",
-            "Il processo di firma si è interrotto. Nessun file sorgente è stato modificato.",
+            "Il processo di firma si è interrotto. I documenti già completati mantengono le modifiche applicate.",
         )
 
     @Slot()
@@ -710,6 +806,7 @@ class MFirmaQtWindow(MSFluentWindow):
                 self.import_controller,
                 self.history_controller,
                 self.discovery_controller,
+                self.signing_discovery_controller,
                 self.preview_controller,
                 self.signing_controller,
             )
@@ -789,6 +886,7 @@ class MFirmaQtWindow(MSFluentWindow):
 
     def wait_for_workers(self, timeout_ms: int = 3000) -> bool:
         scan_done = self.scan_controller.wait_for_done(timeout_ms)
+        signing_discovery_done = self.signing_discovery_controller.wait_for_done(timeout_ms)
         discovery_done = self.discovery_controller.wait_for_done(timeout_ms)
         import_done = self.import_controller.wait_for_done(timeout_ms)
         history_done = self.history_controller.wait_for_done(timeout_ms)
@@ -799,6 +897,7 @@ class MFirmaQtWindow(MSFluentWindow):
             and import_done
             and history_done
             and discovery_done
+            and signing_discovery_done
             and preview_done
             and signing_done
         )
