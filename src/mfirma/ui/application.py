@@ -8,7 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QFont, QFontDatabase
 from PySide6.QtWidgets import QApplication, QMessageBox
-from qfluentwidgets import Theme, setTheme, setThemeColor
+from qfluentwidgets import FluentIcon, Theme, setTheme, setThemeColor
 
 from ..config import ConfigRepository
 from ..logging_setup import configure_logging, shutdown_logging
@@ -24,6 +24,22 @@ from .single_instance import (
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def configure_windows_identity() -> None:
+    """Separa l'icona nella taskbar da quella dell'interprete Python."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        set_app_id = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID
+        set_app_id.argtypes = [ctypes.c_wchar_p]
+        set_app_id.restype = ctypes.c_long
+        if set_app_id("mFirma.Desktop") != 0:
+            LOGGER.warning("Identità Windows dell'applicazione non impostata")
+    except (AttributeError, OSError):
+        LOGGER.warning("Identità Windows dell'applicazione non disponibile")
 
 
 def configure_application(application: QApplication) -> None:
@@ -45,6 +61,7 @@ def configure_application(application: QApplication) -> None:
     application.setFont(QFont(family, 10))
     setTheme(Theme.AUTO)
     setThemeColor(QColor("#2667D8"), save=False)
+    application.setWindowIcon(FluentIcon.CERTIFICATE.icon())
 
 
 def run_application(
@@ -65,6 +82,7 @@ def run_application(
         for argument in raw_arguments
         if argument != "--qt-dashboard"
     ]
+    configure_windows_identity()
     application = existing or QApplication(qt_arguments)
     configure_application(application)
     config_path = repository.path if repository is not None else None

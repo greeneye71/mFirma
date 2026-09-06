@@ -2,6 +2,9 @@
 
 ## Non rilasciato
 
+- impostata l'icona della TNA anche a livello di applicazione, con identità
+  Windows dedicata per distinguerla da Python nella barra delle applicazioni;
+
 - registrazione durevole del PDF firmato prima della cancellazione dell'originale,
   con evento separato per l'esito della cancellazione (registro versione 2);
 - recupero guidato della coda incompleta del registro con conferma e backup integrale;
