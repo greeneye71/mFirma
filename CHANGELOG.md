@@ -2,6 +2,16 @@
 
 ## Non rilasciato
 
+- semplificata la dashboard: impostazioni in fondo alla navigazione, righe
+  selezionate evidenziate per intero, percorso cartella e conteggio sul pulsante;
+- aggiunte le modalità Manuale e Da cartella, senza attivare la futura modalità automatica;
+- mostrato il CN come intestatario; selezione diretta dell'unico certificato
+  Firma documenti, mantenendo la conferma del firmatario nel dialogo PIN;
+- ridotta la larghezza del riquadro completo a 212,6 pt mantenendo l'altezza
+  di 92 pt; margini standard di 8,5 pt e fuso numerico GMT;
+- allineati i limiti di trascinamento alla scala e alla posizione reali del PDF;
+- aggiunto il registro JSONL persistente per documento, con nome del firmatario,
+  tessera, certificato, date UTC, impronta del PDF e UUID della postazione;
 - spostata la scelta della tessera e del certificato nel flusso di firma, con
   nuova lettura a ogni batch e identità separata dalle impostazioni comuni;
 - aggiunta la preferenza facoltativa del certificato per middleware e seriale

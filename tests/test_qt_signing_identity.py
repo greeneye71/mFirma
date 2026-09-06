@@ -18,7 +18,7 @@ def signing_flow(qtbot, workdir, monkeypatch):
     module = workdir / "vendor.dll"
     module.write_bytes(b"test middleware")
     certificate = CertificateCandidate(
-        label="Firma", id_hex="01", subject="CN=Persona A", content_commitment=True,
+        label="Firma", id_hex="01", subject="CN=Persona A", content_commitment=False,
     )
     token = TokenCandidate(
         slot_id=1, label="Tessera", serial="A", serial_hex="41",
@@ -253,3 +253,28 @@ def test_ambiguous_certificate_id_does_not_start_signing(signing_flow):
     assert not state.batches
     assert not state.pin_identities
     assert any("stesso ID" in message for message in state.warnings)
+
+
+def test_only_document_signing_certificate_skips_choice_but_keeps_pin(signing_flow):
+    state = signing_flow
+    token = state.candidate.tokens[0]
+    signing = replace(token.certificates[0], content_commitment=True)
+    authentication = replace(signing, id_hex="02", label="Autenticazione", content_commitment=False)
+    state.candidate = replace(state.candidate, tokens=(replace(token, certificates=(authentication, signing)),))
+    state.request()
+    assert not state.certificate_choices
+    assert state.batches[-1][0].config.certificate_id == "01"
+    assert state.pin_identities == ["Persona A\nTessera: Tessera · A"]
+    assert state.batches[-1][2]["signing_identity"].signer_name == "Persona A"
+
+
+def test_multiple_document_signing_certificates_still_require_choice(signing_flow):
+    state = signing_flow
+    token = state.candidate.tokens[0]
+    signing = replace(token.certificates[0], content_commitment=True)
+    second = replace(signing, id_hex="02")
+    state.candidate = replace(state.candidate, tokens=(replace(token, certificates=(signing, second)),))
+    state.certificate_row = 1
+    state.request()
+    assert len(state.certificate_choices) == 1
+    assert state.batches[-1][0].config.certificate_id == "02"

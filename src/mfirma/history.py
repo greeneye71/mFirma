@@ -41,8 +41,8 @@ class HistoryJob:
             source=str(job.document.source),
             person=job.document.person,
             status=job.status,
-            output=str(job.destination) if job.status is JobStatus.SUCCEEDED else "",
-            error_code=job.error_code,
+            output=str(job.destination) if job.status is JobStatus.SUCCEEDED or job.signature_saved else "",
+            error_code="REGISTER_WRITE_FAILED" if job.register_error else job.error_code,
         )
 
     @classmethod
@@ -75,7 +75,7 @@ class HistoryJob:
             raise ValueError("Stato cronologia non definitivo")
         if status is JobStatus.SUCCEEDED and not output:
             raise ValueError("Un esito riuscito deve indicare l'output")
-        if status is not JobStatus.SUCCEEDED and output:
+        if status is not JobStatus.SUCCEEDED and output and error_code not in {"SOURCE_DELETE_FAILED", "REGISTER_WRITE_FAILED"}:
             raise ValueError("Un esito non riuscito non può avere un output")
         return cls(source, person, status, output, error_code)
 

@@ -32,6 +32,8 @@ def status_label(status: JobStatus) -> str:
 
 
 def status_user_message(status: JobStatus, error_code: str | None) -> str:
+    if error_code == "REGISTER_WRITE_FAILED":
+        return "Errore nel registro delle firme. Controllare il registro locale."
     if status is JobStatus.SUCCEEDED:
         return "Firma completata"
     if status is JobStatus.CANCELLED:
@@ -40,6 +42,9 @@ def status_user_message(status: JobStatus, error_code: str | None) -> str:
 
 
 def user_message(job: SignJob) -> str:
+    if job.register_error:
+        return ("PDF firmato salvato, ma registrazione non riuscita."
+                if job.signature_saved else "Registro firme non disponibile; operazione non completata.")
     return status_user_message(job.status, job.error_code)
 
 
@@ -112,4 +117,4 @@ class ProblemsFilterModel(QSortFilterProxyModel):
         if not isinstance(model, BatchResultModel):
             return False
         job = model.data(model.index(source_row, 0, source_parent), model.JOB_ROLE)
-        return job is not None and job.status is not JobStatus.SUCCEEDED
+        return job is not None and (job.status is not JobStatus.SUCCEEDED or job.register_error)

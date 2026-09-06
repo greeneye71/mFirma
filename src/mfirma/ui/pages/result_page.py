@@ -105,7 +105,7 @@ class ResultPage(QWidget):
             label.setText(str(counts[status]))
         if counts[JobStatus.CANCELLED]:
             self.title.setText("Firma annullata in modo controllato")
-        elif counts[JobStatus.FAILED] or counts[JobStatus.SKIPPED]:
+        elif counts[JobStatus.FAILED] or counts[JobStatus.SKIPPED] or any(job.register_error for job in jobs):
             self.title.setText("Firma completata con segnalazioni")
         else:
             self.title.setText("Firma completata")
@@ -117,7 +117,7 @@ class ResultPage(QWidget):
         }
         self._common_folder = next(iter(folders)) if len(folders) == 1 else None
         self.open_folder_button.setEnabled(self._common_folder is not None)
-        has_problems = any(job.status is not JobStatus.SUCCEEDED for job in jobs)
+        has_problems = any(job.status is not JobStatus.SUCCEEDED or job.register_error for job in jobs)
         self.problems_only.setVisible(has_problems)
         self.problems_only.setChecked(False)
         show_log = has_problems and self._log_path is not None

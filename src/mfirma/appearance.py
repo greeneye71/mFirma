@@ -11,7 +11,7 @@ from types import TracebackType
 from typing import Any
 
 
-COMPLETE_APPEARANCE_SIZE = (240.0, 92.0)
+COMPLETE_APPEARANCE_SIZE = (212.6, 92.0)
 COMPACT_APPEARANCE_SIZE = (190.0, 68.0)
 VERIFICATION_NOTICE = "Verificare la firma con un lettore PDF"
 
@@ -141,12 +141,11 @@ def appearance_data_from_certificate(
 def format_signing_time(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("La data di firma deve includere il fuso orario")
-    zone_name = value.tzname() or ""
-    if zone_name and not zone_name.startswith(("UTC+", "UTC-")):
-        zone = zone_name
-    else:
-        offset = value.strftime("%z")
-        zone = f"{offset[:3]}:{offset[3:]}" if offset else ""
+    minutes = int(value.utcoffset().total_seconds() / 60)
+    hours, remainder = divmod(abs(minutes), 60)
+    zone = f"GMT{'+' if minutes >= 0 else '-'}{hours}"
+    if remainder:
+        zone += f":{remainder:02d}"
     return f"{value:%d/%m/%Y} · {value:%H:%M:%S} {zone}".strip()
 
 
@@ -317,14 +316,12 @@ class ReportLabSignatureAppearanceRenderer:
             pdf, name, x, height - 24, body_width, size=name_size, bold=True
         )
         secondary = " · ".join(
-            value for value in (data.organization, data.role) if value
+            value for value in (data.organization, data.role, f"Motivo: {data.reason}" if data.reason else "") if value
         )
         if secondary:
             cls._draw_value(pdf, secondary, x, height - 34, body_width)
 
-        first_width = body_width * 0.67
-        second_x = x + first_width + 4
-        second_width = body_width - first_width - 4
+        first_width = body_width
         cls._draw_label(pdf, "DATA E ORA", x, height - 45, first_width)
         cls._draw_value(
             pdf,
@@ -333,11 +330,7 @@ class ReportLabSignatureAppearanceRenderer:
             height - 54,
             first_width,
         )
-        if data.reason:
-            cls._draw_label(pdf, "MOTIVO", second_x, height - 45, second_width)
-            cls._draw_value(
-                pdf, data.reason, second_x, height - 54, second_width
-            )
+        # Il timestamp occupa tutta la riga per non troncare il fuso orario.
 
         location_width = body_width * 0.32 if data.location else 0
         issuer_x = x + location_width + (4 if data.location else 0)

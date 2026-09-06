@@ -34,18 +34,7 @@ class PreviewResult:
     signature: SignatureConfig
 
 
-def _distinguished_name_value(value: str, oid_name: str) -> str:
-    if not value:
-        return ""
-    try:
-        from cryptography import x509
-        from cryptography.x509.oid import NameOID
-
-        name = x509.Name.from_rfc4514_string(value)
-        attributes = name.get_attributes_for_oid(getattr(NameOID, oid_name))
-        return str(attributes[0].value).strip() if attributes else ""
-    except (AttributeError, IndexError, TypeError, ValueError):
-        return ""
+from ...identity import distinguished_name_value as _distinguished_name_value
 
 
 def preview_appearance_data(

@@ -36,7 +36,9 @@ class CertificateSelectionDialog(QDialog):
         layout.addWidget(SubtitleLabel("Scegli il certificato di firma", self))
         explanation = BodyLabel(
             "Sono mostrati soltanto certificati pubblici letti senza PIN. "
-            "“Firma documenti” indica l’uso contentCommitment dichiarato dal certificato.",
+            + ("Più certificati consentono la firma documenti: scegli quello da usare."
+               if any(item.content_commitment for item in candidate.certificates)
+               else "Nessun certificato dichiara l'uso Firma documenti: verifica quale utilizzare."),
             self,
         )
         explanation.setWordWrap(True)

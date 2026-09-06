@@ -12,7 +12,8 @@
   non richiede il PIN e non legge né esporta la chiave privata.
 - Tessera e certificato vengono scelti per il singolo batch. Le preferenze
   facoltative sono associate a middleware e seriale, vengono verificate sulla
-  lettura corrente e non evitano la conferma del certificato. Le precedenti
+  lettura corrente. L'unico certificato Firma documenti è selezionato direttamente;
+  il firmatario rimane visibile prima dell'inserimento del PIN. Le precedenti
   selezioni globali non vengono utilizzate.
 - Il dialogo Qt consegna il PIN direttamente al worker una sola volta e pulisce
   il campo; stato globale, configurazione, cronologia e segnali Qt non lo
@@ -135,3 +136,11 @@ con timeout, così un crash del middleware non termina la GUI.
 L'isolamento del processo non rende affidabile una DLL sconosciuta: prima di
 selezionarla l'utente deve controllare percorso e produttore e deve usare
 soltanto middleware ottenuto dal fornitore ufficiale del dispositivo.
+
+## Registro per documento
+
+Il registro locale `signatures.jsonl` contiene dati personali del firmatario e
+percorsi dei documenti. Non contiene PIN, chiavi private o eccezioni grezze.
+La registrazione è distinta dalla firma crittografica: il file è modificabile
+dall'utente della postazione e richiede backup e protezione degli accessi.
+Non viene trasmesso a servizi esterni. Vedere [Registro delle firme](REGISTRO_FIRME.md).

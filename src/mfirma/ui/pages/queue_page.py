@@ -30,29 +30,7 @@ from qfluentwidgets import (
 from ...models import DocumentCandidate
 from ...scanner import ScanResult
 from ..models import DocumentFilterModel, DocumentTableModel
-from ..state import DeviceState, ScanState, normalized_path
-
-
-class _StatusPanel(QFrame):
-    def __init__(self, title: str, parent=None):
-        super().__init__(parent)
-        self.setFrameShape(QFrame.Shape.StyledPanel)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(3)
-        caption = BodyLabel(title, self)
-        self.value = SubtitleLabel("—", self)
-        self.detail = BodyLabel("", self)
-        self.detail.setWordWrap(True)
-        self.setAccessibleName(title)
-        self.value.setAccessibleName(f"Stato {title.casefold()}")
-        layout.addWidget(caption)
-        layout.addWidget(self.value)
-        layout.addWidget(self.detail)
-
-    def set_status(self, value: str, detail: str = "") -> None:
-        self.value.setText(value)
-        self.detail.setText(detail)
+from ..state import ScanState, normalized_path
 
 
 class QueuePage(QWidget):
@@ -67,6 +45,8 @@ class QueuePage(QWidget):
         self.proxy = DocumentFilterModel(self)
         self.proxy.setSourceModel(self.model)
         self._active_person: str | None = None
+        self._mode = "folder"
+        self._root_path = ""
         self._build_ui()
         self._connect_ui()
         self.set_scan_state(ScanState.IDLE)
@@ -93,29 +73,23 @@ class QueuePage(QWidget):
         header.addWidget(self.refresh_button)
         root.addLayout(header)
 
-        status_row = QHBoxLayout()
-        status_row.setSpacing(10)
-        self.folder_status = _StatusPanel("Cartella", self)
-        self.folder_status.setObjectName("folderStatus")
-        self.device_status = _StatusPanel("Dispositivo", self)
-        self.device_status.setObjectName("deviceStatus")
-        self.certificate_status = _StatusPanel("Certificato", self)
-        self.certificate_status.setObjectName("certificateStatus")
-        for panel in (self.folder_status, self.device_status, self.certificate_status):
-            panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            status_row.addWidget(panel)
-        root.addLayout(status_row)
+        self.folder_path_label = BodyLabel("Cartella non configurata", self)
+        self.folder_path_label.setWordWrap(True)
+        self.folder_path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        root.addWidget(self.folder_path_label)
 
         content = QHBoxLayout()
         content.setSpacing(12)
-        people_box = QVBoxLayout()
-        people_box.addWidget(SubtitleLabel("Persone", self))
+        self.people_panel = QWidget(self)
+        people_box = QVBoxLayout(self.people_panel)
+        people_box.setContentsMargins(0, 0, 0, 0)
+        people_box.addWidget(SubtitleLabel("Sottocartelle", self))
         self.people_list = QListWidget(self)
         self.people_list.setObjectName("peopleFilter")
         self.people_list.setAccessibleName("Filtro per persona")
         self.people_list.setFixedWidth(190)
         people_box.addWidget(self.people_list, 1)
-        content.addLayout(people_box)
+        content.addWidget(self.people_panel)
 
         documents_box = QVBoxLayout()
         self.search = SearchLineEdit(self)
@@ -137,10 +111,19 @@ class QueuePage(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setAlternatingRowColors(True)
+        self.table.setStyleSheet("""
+            QTableView::item:selected { background-color: #245CB5; color: white; }
+            QTableView::item:selected:!active { background-color: #245CB5; color: white; }
+        """)
+        self.people_list.setStyleSheet("""
+            QListWidget::item { padding: 6px; }
+            QListWidget::item:selected { background-color: #245CB5; color: white; border-radius: 4px; }
+            QListWidget::item:selected:!active { background-color: #245CB5; color: white; }
+        """)
         self.table.setWordWrap(False)
         self.table.verticalHeader().setDefaultSectionSize(46)
         self.table.verticalHeader().hide()
-        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setColumnWidth(DocumentTableModel.CHECK_COLUMN, 42)
         self.table.setColumnWidth(DocumentTableModel.DOCUMENT_COLUMN, 360)
         self.table.setColumnWidth(DocumentTableModel.PERSON_COLUMN, 180)
@@ -163,20 +146,16 @@ class QueuePage(QWidget):
         root.addWidget(self.warning_label)
 
         selection_bar = QHBoxLayout()
-        self.select_visible_button = PushButton("Seleziona risultati visibili", self)
+        self.select_visible_button = PushButton("Seleziona tutti", self)
         self.select_visible_button.setAccessibleName(
             "Seleziona o deseleziona tutti i risultati visibili"
         )
-        self.selection_label = BodyLabel("0 documenti selezionati", self)
-        self.summary_label = BodyLabel("Ultima pagina · Basso a destra", self)
         self.prepare_button = PrimaryPushButton("Prepara la firma", self)
         self.prepare_button.setObjectName("prepareButton")
         self.prepare_button.setAccessibleName("Prepara la firma dei documenti selezionati")
         self.prepare_button.setEnabled(False)
         selection_bar.addWidget(self.select_visible_button)
-        selection_bar.addWidget(self.selection_label)
         selection_bar.addStretch(1)
-        selection_bar.addWidget(self.summary_label)
         selection_bar.addWidget(self.prepare_button)
         root.addLayout(selection_bar)
 
@@ -264,23 +243,9 @@ class QueuePage(QWidget):
         total: int | None = None,
         errors: tuple[str, ...] = (),
     ) -> None:
+        self.refresh_button.setEnabled(state is not ScanState.SCANNING)
         if state is ScanState.SCANNING:
-            self.folder_status.set_status("Scansione in corso", "Attendere l'aggiornamento")
-            self.refresh_button.setEnabled(False)
-        elif state is ScanState.UNAVAILABLE:
-            self.folder_status.set_status(
-                "Non raggiungibile", "L'ultima lista disponibile rimane visibile"
-            )
-            self.refresh_button.setEnabled(True)
-        elif state is ScanState.AVAILABLE_WITH_WARNINGS:
-            self.folder_status.set_status(f"{total or 0} PDF", "Disponibile con avvisi")
-            self.refresh_button.setEnabled(True)
-        elif state is ScanState.AVAILABLE:
-            self.folder_status.set_status(f"{total or 0} PDF", "Cartella disponibile")
-            self.refresh_button.setEnabled(True)
-        else:
-            self.folder_status.set_status("Da aggiornare")
-            self.refresh_button.setEnabled(True)
+            self.updated_label.setText("Scansione in corso…")
         self.warning_label.setVisible(bool(errors))
         if errors:
             self.warning_label.setText(
@@ -294,25 +259,33 @@ class QueuePage(QWidget):
         )
         self.warning_label.show()
 
-    def set_device_status(
-        self,
-        state: DeviceState,
-        *,
-        token_label: str = "",
-        certificate_label: str = "",
-    ) -> None:
-        if state is DeviceState.READY:
-            self.device_status.set_status(token_label or "Dispositivo configurato")
-        elif state is DeviceState.MISSING:
-            self.device_status.set_status("Non disponibile", "Collega il dispositivo")
-        elif state is DeviceState.MIDDLEWARE_ERROR:
-            self.device_status.set_status("Middleware non disponibile")
-        else:
-            self.device_status.set_status("Da verificare")
-        if certificate_label:
-            self.certificate_status.set_status(certificate_label, "Configurato")
-        else:
-            self.certificate_status.set_status("Non configurato")
+    def configure_mode(self, mode: str, root_path: str) -> None:
+        changed = mode != self._mode or root_path != self._root_path
+        self._mode, self._root_path = mode, root_path
+        manual = mode == "manual"
+        self.people_panel.setVisible(not manual)
+        self.refresh_button.setVisible(not manual)
+        self._refresh_shortcut.setEnabled(not manual)
+        self.folder_path_label.setVisible(not manual)
+        self.table.setColumnHidden(DocumentTableModel.PERSON_COLUMN, manual)
+        if changed:
+            self.model.set_documents(())
+            self._rebuild_people(())
+            self.updated_label.setText("Aggiungi i PDF da firmare" if manual else "Da aggiornare")
+            self.warning_label.hide()
+            self._update_empty_state()
+        self._update_folder_path()
+
+    def show_warning(self, message: str) -> None:
+        self.warning_label.setText(message)
+        self.warning_label.show()
+
+    def _update_folder_path(self) -> None:
+        from pathlib import Path
+
+        root = Path(self._root_path) if self._root_path else None
+        path = root / self._active_person if root and self._active_person else root
+        self.folder_path_label.setText(str(path) if path else "Cartella non configurata")
 
     def visible_source_rows(self) -> list[int]:
         rows: list[int] = []
@@ -375,6 +348,7 @@ class QueuePage(QWidget):
     def _person_changed(self, current: QListWidgetItem | None, _previous) -> None:
         person = current.data(Qt.ItemDataRole.UserRole) if current else None
         self._active_person = person
+        self._update_folder_path()
         self.proxy.set_person_filter(person)
         self._update_empty_state()
 
@@ -383,8 +357,8 @@ class QueuePage(QWidget):
         self._update_empty_state()
 
     def _selection_changed(self, count: int) -> None:
-        suffix = "documento selezionato" if count == 1 else "documenti selezionati"
-        self.selection_label.setText(f"{count} {suffix}")
+        suffix = "documento" if count == 1 else "documenti"
+        self.prepare_button.setText(f"Prepara la firma · {count} {suffix}" if count else "Prepara la firma")
         self.prepare_button.setEnabled(count > 0)
 
     def _update_empty_state(self) -> None:

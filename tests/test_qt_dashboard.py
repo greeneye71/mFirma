@@ -56,7 +56,7 @@ def test_queue_page_keeps_last_snapshot_when_network_is_unavailable(qtbot, workd
     page.set_scan_error("percorso non trovato")
 
     assert page.model.rowCount() == 1
-    assert page.folder_status.value.text() == "Non raggiungibile"
+    assert "non è raggiungibile" in page.warning_label.text()
     assert page.warning_label.isVisible()
     assert "non è raggiungibile" in page.warning_label.text()
 

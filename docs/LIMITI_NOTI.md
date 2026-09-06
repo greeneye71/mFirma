@@ -2,6 +2,7 @@
 
 ## Funzioni non ancora implementate
 
+- modalità automatica PDF+JSON e alimentazione di un database esterno;
 - avvio automatico con Windows;
 - menu contestuale moderno di Windows 11; è disponibile il verbo classico, che
   può comparire sotto `Mostra altre opzioni`;
@@ -15,12 +16,12 @@
 ## Limiti operativi
 
 - viene firmata sempre l'ultima pagina;
-- il nome di output aggiunge sempre `_firmato`;
+- il nome della copia usa il suffisso configurato; la sovrascrittura mantiene il nome originale;
 - una co-firma aggiunge nuovamente il suffisso;
 - le firme multiple nello stesso preset possono sovrapporsi visivamente;
 - la scansione è manuale, non periodica;
 - i file modificati negli ultimi cinque secondi non compaiono nella scansione;
-- il certificato è presentato tramite etichetta, mentre la chiave viene
+- il certificato è presentato tramite nome CN ed etichetta, mentre la chiave viene
   associata automaticamente tramite ID PKCS#11 quando disponibile;
 - un PDF cifrato non è supportato;
 - la compatibilità dipende dalla DLL e dal middleware del produttore;

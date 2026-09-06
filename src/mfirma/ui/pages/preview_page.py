@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import (
     QBuffer,
+    QEvent,
+    QTimer,
     QIODevice,
     QMargins,
     QPoint,
@@ -11,7 +13,7 @@ from PySide6.QtCore import (
     Qt,
     Signal,
 )
-from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPen
+from PySide6.QtGui import QColor, QGuiApplication, QImage, QMouseEvent, QPainter, QPen
 from PySide6.QtPdf import QPdfDocument
 from PySide6.QtPdfWidgets import QPdfView
 from PySide6.QtWidgets import (
@@ -200,18 +202,21 @@ class PdfPreviewCanvas(QWidget):
         self.view = QPdfView(self)
         self.view.setDocument(self.document)
         self.view.setPageMode(QPdfView.PageMode.SinglePage)
+        self.view.setPageSpacing(0)
         self.view.setDocumentMargins(QMargins(12, 12, 12, 12))
         self.view.setZoomMode(QPdfView.ZoomMode.FitInView)
+        self._screen_scale = QGuiApplication.primaryScreen().logicalDotsPerInch() / 72.0
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
-        self.overlay = _SignatureOverlay(self)
+        self.overlay = _SignatureOverlay(self.view.viewport())
         self.overlay.hide()
         self._geometry: PageGeometry | None = None
         self._page_index = 0
         self._display_rect: DisplayRect | None = None
         self._page_rect = QRect()
         self._fit_to_page = True
+        self.view.viewport().installEventFilter(self)
         self.overlay.geometryEdited.connect(self._overlay_edited)
         self.view.zoomFactorChanged.connect(self._update_overlay_geometry)
         self.view.horizontalScrollBar().valueChanged.connect(
@@ -260,7 +265,7 @@ class PdfPreviewCanvas(QWidget):
             available_height = max(
                 1, viewport.height() - margins.top() - margins.bottom()
             )
-            factor = min(available_width / width, available_height / height)
+            factor = min(available_width / width, available_height / height) / self._screen_scale
             self.view.setZoomMode(QPdfView.ZoomMode.Custom)
             self.view.setZoomFactor(factor)
         self._update_overlay_geometry()
@@ -277,6 +282,11 @@ class PdfPreviewCanvas(QWidget):
             self.fit_page()
         else:
             self._update_overlay_geometry()
+
+    def eventFilter(self, watched, event):  # noqa: N802
+        if watched is self.view.viewport() and event.type() == QEvent.Type.Resize:
+            QTimer.singleShot(0, self.fit_page if self._fit_to_page else self._update_overlay_geometry)
+        return super().eventFilter(watched, event)
 
     @staticmethod
     def _render_appearance(result: PreviewResult) -> QImage:
@@ -302,7 +312,7 @@ class PdfPreviewCanvas(QWidget):
         if self._geometry is None or self._display_rect is None:
             return
         display_width, display_height = display_page_size(self._geometry)
-        zoom = self.view.zoomFactor()
+        zoom = self.view.zoomFactor() * self._screen_scale
         viewport = self.view.viewport()
         margins = self.view.documentMargins()
         page_width = max(1, round(display_width * zoom))
@@ -313,13 +323,8 @@ class PdfPreviewCanvas(QWidget):
         available_height = max(
             1, viewport.height() - margins.top() - margins.bottom()
         )
-        origin = viewport.mapTo(self, QPoint(0, 0))
-        x = origin.x() + margins.left() + max(
-            0, (available_width - page_width) // 2
-        )
-        y = origin.y() + margins.top() + max(
-            0, (available_height - page_height) // 2
-        )
+        x = (max(page_width + margins.left() + margins.right(), viewport.width()) - page_width) // 2
+        y = margins.top()
         x -= self.view.horizontalScrollBar().value()
         y -= self.view.verticalScrollBar().value()
         self._page_rect = QRect(x, y, page_width, page_height)
@@ -338,7 +343,7 @@ class PdfPreviewCanvas(QWidget):
         if self._geometry is None or self._page_rect.width() <= 0:
             return
         display_width, display_height = display_page_size(self._geometry)
-        scale = self._page_rect.width() / display_width
+        scale = self.view.zoomFactor() * self._screen_scale
         overlay = self.overlay.geometry()
         self._display_rect = constrain_display_rect(
             self._geometry,
@@ -445,9 +450,9 @@ class PreviewPage(QWidget):
         side_layout.addWidget(self.count_label)
         side_layout.addWidget(self.certificate_label)
         side_layout.addWidget(BodyLabel("Formato: PAdES B-B", side))
-        side_layout.addWidget(
-            BodyLabel("Output: nuovo file, nessuna sovrascrittura", side)
-        )
+        self.output_label = BodyLabel("", side)
+        self.output_label.setWordWrap(True)
+        side_layout.addWidget(self.output_label)
         side_layout.addSpacing(12)
         side_layout.addWidget(SubtitleLabel("Posizione", side))
         self.preset_group = QButtonGroup(self)
@@ -495,7 +500,7 @@ class PreviewPage(QWidget):
         self._current_result = None
         self._placements.clear()
         self._shared_normalized_rect = None
-        self.count_label.setText(f"{len(documents)} documenti")
+        self.count_label.setText(f"{len(documents)} documento" if len(documents) == 1 else f"{len(documents)} documenti")
         self.certificate_label.setText(
             certificate or "Certificato non configurato"
         )

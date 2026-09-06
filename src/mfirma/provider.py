@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+import hashlib
 from pathlib import Path
 from typing import Any, Iterator, Protocol
 
@@ -58,6 +60,7 @@ class SigningProvider(Protocol):
 class _PadesSigningSession:
     signer: Any
     settings: SignatureConfig
+    signing_time: datetime | None = None
 
     def sign_pdf(
         self,
@@ -68,11 +71,13 @@ class _PadesSigningSession:
         normalized_rect: NormalizedDisplayRect | None = None,
         phase_callback: Callable[[str], None] | None = None,
     ) -> None:
+        self.signing_time = datetime.now().astimezone()
         sign_pades(
             source,
             temporary_output,
             self.signer,
             self.settings,
+            signing_time=self.signing_time,
             placement=placement,
             normalized_rect=normalized_rect,
             phase_callback=phase_callback,
@@ -83,6 +88,7 @@ class Pkcs11SigningProvider:
     def __init__(self, config: Pkcs11Config, signature: SignatureConfig):
         self.config = config
         self.signature = signature
+        self.expected_certificate_sha256 = ""
 
     def validate(self) -> None:
         if not self.config.module_path:
@@ -124,6 +130,10 @@ class Pkcs11SigningProvider:
                 f"Impossibile aprire il dispositivo PKCS#11: {exc}"
             ) from exc
         try:
+            if self.expected_certificate_sha256:
+                actual = hashlib.sha256(signer.signing_cert.dump()).hexdigest()
+                if actual != self.expected_certificate_sha256:
+                    raise ProviderConfigurationError("Il certificato sulla tessera è cambiato dopo la selezione")
             yield _PadesSigningSession(signer, self.signature)
         finally:
             signing_context.__exit__(None, None, None)

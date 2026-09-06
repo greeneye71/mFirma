@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import logging
+import hashlib
+import uuid
 import threading
+from datetime import datetime, timezone
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 
@@ -17,6 +20,7 @@ from .models import (
 )
 from .output import create_temporary_output, destination_for, publish_temporary
 from .provider import SigningProvider
+from .signature_register import SignatureRegister, SigningIdentity, record_for
 
 
 ProgressCallback = Callable[[int, int, SignJob], None]
@@ -34,6 +38,9 @@ class BatchOrchestrator:
     def __init__(
         self, provider: SigningProvider, output_suffix: str = "_firmato", *,
         output_directory: Path | None = None, source_action: str = "keep",
+        register: SignatureRegister | None = None,
+        signing_identity: SigningIdentity | None = None,
+        mode: str = "folder",
     ):
         if source_action not in {"keep", "overwrite", "delete"}:
             raise ValueError("Azione sul file originale non valida")
@@ -41,6 +48,9 @@ class BatchOrchestrator:
         self.output_suffix = output_suffix
         self.output_directory = output_directory
         self.source_action = source_action
+        self.register = register
+        self.signing_identity = signing_identity or SigningIdentity()
+        self.mode = mode
 
     def build_jobs(self, documents: Iterable[DocumentCandidate]) -> list[SignJob]:
         unique: dict[str, DocumentCandidate] = {}
@@ -67,15 +77,27 @@ class BatchOrchestrator:
         normalized_rect: NormalizedDisplayRect | None = None,
     ) -> list[SignJob]:
         jobs = self.build_jobs(documents)
+        batch_id = str(uuid.uuid4())
+        for job in jobs:
+            job.batch_id = batch_id
+            job.operation_id = str(uuid.uuid4())
         cancellation = cancel or threading.Event()
         LOGGER.info("Avvio batch: documenti=%d", len(jobs))
 
         try:
+            if self.register:
+                try:
+                    self.register.prepare()
+                except Exception:
+                    for job in jobs:
+                        job.register_error = True
+                    raise MFirmaError("Registro delle firme non disponibile")
             with self.provider.open(pin) as session:
                 for index, job in enumerate(jobs, start=1):
                     if cancellation.is_set():
                         job.status = JobStatus.CANCELLED
                         job.message = "Non iniziato"
+                        self._register_job(job)
                         if progress:
                             progress(index, len(jobs), job)
                         if events:
@@ -101,6 +123,8 @@ class BatchOrchestrator:
                         normalized_rect=normalized_rect if placement is None else None,
                         secret=pin,
                     )
+                    if not self._register_job(job):
+                        cancellation.set()
                     if progress:
                         progress(index, len(jobs), job)
                     if events:
@@ -126,6 +150,7 @@ class BatchOrchestrator:
                     job.status = JobStatus.FAILED
                     job.error_code = getattr(exc, "code", "SIGNATURE_FAILED")
                     job.message = safe_message
+                    self._register_job(job)
                     if progress:
                         progress(index, len(jobs), job)
                     if events:
@@ -191,6 +216,10 @@ class BatchOrchestrator:
                 session.sign_pdf(  # type: ignore[attr-defined]
                     job.document.source, temporary
                 )
+            signed_at = getattr(session, "signing_time", None) or datetime.now(timezone.utc)
+            job.signed_at = signed_at.astimezone(timezone.utc).isoformat(timespec="microseconds")
+            with temporary.open("rb") as stream:
+                job.output_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
             emit(BatchPhase.PUBLISHING)
             if self.source_action != "keep":
                 self._check_source_unchanged(job)
@@ -198,6 +227,7 @@ class BatchOrchestrator:
                 temporary, job.destination, overwrite=self.source_action == "overwrite",
             )
             temporary = None
+            job.signature_saved = True
             if self.source_action == "delete":
                 try:
                     self._check_source_unchanged(job)
@@ -238,6 +268,20 @@ class BatchOrchestrator:
         if (stat.st_size != job.document.size
                 or stat.st_mtime_ns != job.document.modified_ns):
             raise FileChangedError("Il file è cambiato durante la firma")
+
+    def _register_job(self, job: SignJob) -> bool:
+        job.completed_at = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+        if self.register is None:
+            return True
+        try:
+            self.register.append(record_for(
+                job, self.signing_identity, mode=self.mode, source_action=self.source_action,
+            ))
+        except Exception:
+            job.register_error = True
+            LOGGER.error("Registrazione firma non riuscita: operazione=%s batch=%s", job.operation_id, job.batch_id)
+            return False
+        return True
 
     @staticmethod
     def _log_job_problem(job: SignJob) -> None:

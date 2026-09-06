@@ -7,6 +7,8 @@ del progetto.
 ## Per chi usa l'applicazione
 
 - [Manuale utente](MANUALE_UTENTE.md): avvio, selezione e firma dei PDF.
+- [Registro delle firme](REGISTRO_FIRME.md): dati per documento, identità della
+  postazione e predisposizione per un futuro database condiviso.
 - [Installazione e configurazione](INSTALLAZIONE.md): primo avvio automatico,
   riparazione dell'ambiente Python, token e DLL PKCS#11.
 - [Risoluzione dei problemi](RISOLUZIONE_PROBLEMI.md): errori frequenti e

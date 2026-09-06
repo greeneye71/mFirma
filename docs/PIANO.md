@@ -15,6 +15,16 @@ e tabelle model/view. La specifica operativa è in
 
 ## Fasi
 
+### Evoluzioni concordate: non implementate
+
+- Modalità Automatica: esecuzione silenziosa nell'area di notifica e monitoraggio
+  di una cartella con coppie `documento.pdf` / `documento.json`. Formato JSON,
+  comandi, condizioni di avvio, gestione del PIN, duplicati ed esiti saranno
+  definiti successivamente. Nessun monitor o comando automatico è attivo.
+- Database esterno: raccolta delle registrazioni da più postazioni, con invio
+  differito quando la rete torna disponibile e deduplicazione per operation_id.
+  È implementato soltanto il [registro locale](REGISTRO_FIRME.md).
+
 ### 1. Nucleo eseguibile (questa consegna)
 
 - modelli indipendenti dalla GUI;

@@ -197,6 +197,8 @@ def test_probe_extracts_public_certificate_details():
     )
 
     assert details["subject"] == "CN=Firmatario Prova"
+    assert details["serial_number"] == str(certificate.serial_number)
+    assert details["sha256"] == certificate.fingerprint(hashes.SHA256()).hex()
     assert details["issuer"] == "CN=CA Prova"
     assert details["not_before"] == "2026-01-01"
     assert details["not_after"] == "2028-01-01"

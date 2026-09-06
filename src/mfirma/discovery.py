@@ -46,6 +46,8 @@ class CertificateCandidate:
     not_after: str = ""
     digital_signature: bool = False
     content_commitment: bool = False
+    serial_number: str = ""
+    sha256: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -345,7 +347,7 @@ def discover_pkcs11_modules(
             clean_token_label = label.strip() if isinstance(label, str) else ""
             if clean_token_label:
                 token_labels.add(clean_token_label)
-            token_certificates: dict[str, CertificateCandidate] = {}
+            token_certificates: dict[tuple[str, str, str], CertificateCandidate] = {}
             certificates = token.get("certificates", [])
             if isinstance(certificates, list):
                 for certificate in certificates:
@@ -394,8 +396,10 @@ def discover_pkcs11_modules(
                             ),
                             digital_signature=digital_signature,
                             content_commitment=content_commitment,
+                            serial_number=str(certificate.get("serial_number", "")),
+                            sha256=str(certificate.get("sha256", "")),
                         )
-                        token_certificates.setdefault(clean_label, detail)
+                        token_certificates.setdefault((clean_label, detail.id_hex, detail.sha256), detail)
                         certificate_details.setdefault(clean_label, detail)
                         if content_commitment:
                             document_signing_labels.add(clean_label)

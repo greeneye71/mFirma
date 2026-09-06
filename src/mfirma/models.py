@@ -91,6 +91,13 @@ class SignJob:
     status: JobStatus = JobStatus.PENDING
     error_code: str | None = None
     message: str = ""
+    operation_id: str = ""
+    batch_id: str = ""
+    completed_at: str = ""
+    signed_at: str = ""
+    output_sha256: str = ""
+    signature_saved: bool = False
+    register_error: bool = False
 
 
 @dataclass(frozen=True, slots=True)

@@ -84,7 +84,17 @@ class SettingsPage(QWidget):
             )
         )
 
+        mode_section = _SettingsSection("Modalità di lavoro", content)
+        self.mode = ComboBox(mode_section)
+        self.mode.setAccessibleName("Modalità di lavoro")
+        self.mode.addItem("Manuale", userData="manual")
+        self.mode.addItem("Da cartella", userData="folder")
+        mode_section.layout.addWidget(QLabel("Modalità"), 1, 0)
+        mode_section.layout.addWidget(self.mode, 1, 1, 1, 3)
+        layout.addWidget(mode_section)
         monitor = _SettingsSection("Cartella monitorata", content)
+        self.monitor_section = monitor
+        self.mode.currentIndexChanged.connect(self._mode_changed)
         self.monitor_root = LineEdit(monitor)
         self.monitor_root.setObjectName("monitorRoot")
         self.monitor_root.setPlaceholderText("Percorso locale o UNC")
@@ -255,6 +265,8 @@ class SettingsPage(QWidget):
 
     def load_config(self, config: AppConfig) -> None:
         self._loaded_config = deepcopy(config)
+        self._set_combo_data(self.mode, config.mode)
+        self._mode_changed()
         self.monitor_root.setText(config.monitor.root)
         self.recursive.setChecked(config.monitor.recursive_within_person)
         self.stability_seconds.setValue(config.monitor.stability_seconds)
@@ -276,6 +288,7 @@ class SettingsPage(QWidget):
         self._output_action_changed()
     def build_config(self) -> AppConfig:
         config = deepcopy(self._loaded_config)
+        config.mode = str(self.mode.currentData())
         config.monitor.root = self.monitor_root.text().strip()
         config.monitor.recursive_within_person = self.recursive.isChecked()
         config.monitor.stability_seconds = self.stability_seconds.value()
@@ -297,6 +310,9 @@ class SettingsPage(QWidget):
         config.output.source_action = str(self.source_action.currentData())
         config.validate()
         return config
+
+    def _mode_changed(self, _index: int = 0) -> None:
+        self.monitor_section.setVisible(self.mode.currentData() == "folder")
 
     def _output_action_changed(self, _index: int = 0) -> None:
         enabled = self.source_action.currentData() != "overwrite"
@@ -327,11 +343,11 @@ class SettingsPage(QWidget):
         variant = self.appearance_variant.currentData()
         width = self.width_points.value()
         height = self.height_points.value()
-        if variant == "compact" and (width, height) == (240.0, 92.0):
+        if variant == "compact" and (width, height) == (212.6, 92.0):
             self.width_points.setValue(190.0)
             self.height_points.setValue(68.0)
         elif variant == "complete" and (width, height) == (190.0, 68.0):
-            self.width_points.setValue(240.0)
+            self.width_points.setValue(212.6)
             self.height_points.setValue(92.0)
 
     @staticmethod

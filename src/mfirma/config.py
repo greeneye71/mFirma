@@ -25,8 +25,8 @@ class OutputConfig:
 @dataclass(slots=True)
 class SignatureConfig:
     preset: str = "bottom_right"
-    margin_points: float = 24.0
-    width_points: float = 240.0
+    margin_points: float = 8.5
+    width_points: float = 212.6
     height_points: float = 92.0
     appearance_variant: str = "complete"
     reason: str = ""
@@ -47,12 +47,16 @@ class Pkcs11Config:
 @dataclass(slots=True)
 class AppConfig:
     config_version: int = 1
+    mode: str = "folder"
+    interface_version: int = 2
     monitor: MonitorConfig = field(default_factory=MonitorConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     signature: SignatureConfig = field(default_factory=SignatureConfig)
     pkcs11: Pkcs11Config = field(default_factory=Pkcs11Config)
 
     def validate(self) -> None:
+        if self.mode not in {"manual", "folder"}:
+            raise ValueError("Modalità non supportata: scegliere Manuale o Da cartella")
         preferences = self.pkcs11.remembered_certificates
         if not isinstance(preferences, dict) or any(
             not isinstance(key, str) or not isinstance(value, str)
@@ -93,7 +97,7 @@ class AppConfig:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "AppConfig":
-        allowed_top = {"config_version", "monitor", "output", "signature", "pkcs11"}
+        allowed_top = {"config_version", "interface_version", "mode", "monitor", "output", "signature", "pkcs11"}
         unknown = set(raw) - allowed_top
         if unknown:
             raise ValueError(f"Campi configurazione sconosciuti: {', '.join(sorted(unknown))}")
@@ -105,8 +109,15 @@ class AppConfig:
         ):
             signature_values["width_points"] = 240.0
             signature_values["height_points"] = 92.0
+        # Aggiorna solo i vecchi valori standard, preservando le personalizzazioni.
+        if raw.get("interface_version", 1) < 2:
+            if (signature_values.get("width_points"), signature_values.get("height_points")) == (240.0, 92.0):
+                signature_values["width_points"] = 212.6
+            if signature_values.get("margin_points") == 24.0:
+                signature_values["margin_points"] = 8.5
         config = cls(
             config_version=int(raw.get("config_version", 1)),
+            mode=raw.get("mode", "folder"),
             monitor=MonitorConfig(**raw.get("monitor", {})),
             output=OutputConfig(**raw.get("output", {})),
             signature=SignatureConfig(**signature_values),

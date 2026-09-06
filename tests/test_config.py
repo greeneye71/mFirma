@@ -38,7 +38,7 @@ def test_old_config_without_certificate_id_remains_supported():
     assert config.pkcs11.certificate_id == ""
     assert config.pkcs11.token_serial == ""
     assert config.signature.appearance_variant == "complete"
-    assert config.signature.width_points == 240.0
+    assert config.signature.width_points == 212.6
     assert config.signature.height_points == 92.0
 
 
@@ -66,5 +66,19 @@ def test_old_default_appearance_dimensions_are_migrated():
     )
 
     assert config.signature.appearance_variant == "complete"
-    assert config.signature.width_points == 240.0
+    assert config.signature.width_points == 212.6
     assert config.signature.height_points == 92.0
+
+
+def test_interface_migration_preserves_custom_geometry():
+    config = AppConfig.from_dict({"signature": {"width_points": 200, "height_points": 85, "margin_points": 12}})
+    assert config.mode == "folder"
+    assert config.signature.width_points == 200
+    assert config.signature.height_points == 85
+    assert config.signature.margin_points == 12
+    assert AppConfig.from_dict(asdict(config)) == config
+
+
+def test_automatic_mode_is_not_exposed_or_accepted_yet():
+    with pytest.raises(ValueError, match="Modalità"):
+        AppConfig.from_dict({"mode": "automatic"})

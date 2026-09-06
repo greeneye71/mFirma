@@ -14,12 +14,14 @@ from PySide6.QtGui import (
     QShortcut,
 )
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
-from qfluentwidgets import FluentIcon, MSFluentWindow
+from qfluentwidgets import FluentIcon, MSFluentWindow, NavigationItemPosition
 
 from ..batch import BatchOrchestrator
 from ..config import AppConfig, ConfigRepository, Pkcs11Config
 from ..discovery import ModuleCandidate
 from ..history import BatchHistoryRecord, HistoryRepository
+from ..identity import signer_display_name
+from ..signature_register import JsonlSignatureRegister, SigningIdentity
 from ..models import DocumentCandidate, SignaturePositionPlan
 from ..provider import Pkcs11SigningProvider, SigningProvider
 from ..scanner import ImportResult, ScanResult
@@ -108,8 +110,10 @@ class MFirmaQtWindow(MSFluentWindow):
         self.preview_page = PreviewPage(self)
         self.progress_page = ProgressPage(self)
         self.log_path = log_path
+        self.signature_register = JsonlSignatureRegister(self.repository.path.with_name("signatures.jsonl"))
         self.result_page = ResultPage(self, log_path=self.log_path)
         self.history_page = HistoryPage(self)
+        self.history_page.set_register_path(self.signature_register.path)
         self.settings_page = SettingsPage(self.config, self)
         self._shutdown_requested = False
         self._hide_notification_shown = False
@@ -129,7 +133,7 @@ class MFirmaQtWindow(MSFluentWindow):
         self.setWindowIcon(FluentIcon.CERTIFICATE.icon())
         self._connect_services()
         self._update_operational_status()
-        if auto_scan and self.config.monitor.root:
+        if auto_scan and self.config.mode == "folder" and self.config.monitor.root:
             QTimer.singleShot(0, self.refresh_documents)
         QTimer.singleShot(0, self._load_history)
 
@@ -144,7 +148,8 @@ class MFirmaQtWindow(MSFluentWindow):
             self.history_page, FluentIcon.HISTORY, "Cronologia"
         )
         self._settings_navigation = self.addSubInterface(
-            self.settings_page, FluentIcon.SETTING, "Impostazioni"
+            self.settings_page, FluentIcon.SETTING, "Impostazioni",
+            position=NavigationItemPosition.BOTTOM,
         )
         for button, name in (
             (self._queue_navigation, "Da firmare"),
@@ -217,21 +222,15 @@ class MFirmaQtWindow(MSFluentWindow):
         self.preview_controller.previewFailed.connect(self._preview_failed)
 
     def _update_operational_status(self) -> None:
-        self.queue_page.set_device_status(DeviceState.UNKNOWN)
-        self.queue_page.device_status.set_status(
-            "Middleware configurato" if self.config.pkcs11.module_path else "Da configurare"
-        )
-        self.queue_page.certificate_status.set_status(
-            "Da scegliere alla firma", "Inserisci la tua tessera"
-        )
+        self.queue_page.configure_mode(self.config.mode, self.config.monitor.root)
 
     @Slot()
     def refresh_documents(self) -> None:
+        if self.config.mode != "folder":
+            return
         root = self.config.monitor.root.strip()
         if not root:
-            self.queue_page.folder_status.set_status(
-                "Non configurata", "Configura la cartella nelle Impostazioni"
-            )
+            self.queue_page.show_warning("Configura la cartella nelle Impostazioni")
             return
         self.scan_controller.start(
             Path(root),
@@ -242,13 +241,16 @@ class MFirmaQtWindow(MSFluentWindow):
 
     @Slot(object)
     def _scan_succeeded(self, result: ScanResult) -> None:
+        if self.config.mode != "folder":
+            return
         self.queue_page.set_documents(result)
         self._queue_navigation.setText(f"Da firmare ({result.total})")
 
     @Slot(str)
     def _scan_failed(self, technical_message: str) -> None:
         LOGGER.warning("Scansione non riuscita: %s", technical_message)
-        self.queue_page.set_scan_error(technical_message)
+        if self.config.mode == "folder":
+            self.queue_page.set_scan_error(technical_message)
 
     @Slot()
     def choose_monitor_root(self) -> None:
@@ -369,9 +371,8 @@ class MFirmaQtWindow(MSFluentWindow):
         self.config = config
         self.settings_page.mark_saved(config)
         self._update_operational_status()
-        self.queue_page.folder_status.set_status(
-            "Da aggiornare", "Le nuove impostazioni sono state salvate"
-        )
+        if self.config.mode == "folder":
+            self.queue_page.updated_label.setText("Impostazioni salvate · premi Aggiorna")
 
     @Slot(object)
     def open_preview(self, documents) -> None:
@@ -382,6 +383,15 @@ class MFirmaQtWindow(MSFluentWindow):
             selected,
             "Da scegliere dalla tessera al momento della firma",
         )
+        output = self.config.output
+        output_text = {
+            "keep": "Originali conservati",
+            "overwrite": "Gli originali saranno sostituiti dai PDF firmati",
+            "delete": "Gli originali saranno eliminati dopo il salvataggio",
+        }[output.source_action]
+        if output.source_action != "overwrite":
+            output_text += "\nDestinazione: " + (output.directory or "cartella dell'originale")
+        self.preview_page.output_label.setText(output_text)
         self.switchTo(self.preview_page)
         self._prepare_preview(0)
 
@@ -582,12 +592,18 @@ class MFirmaQtWindow(MSFluentWindow):
             remembered_id = config.pkcs11.remembered_certificates.get(preference_key, "")
             if not any(item.id_hex == remembered_id for item in token.certificates):
                 remembered_id = ""
-            certificate_dialog = CertificateSelectionDialog(
-                token, current_id=remembered_id, allow_remember=True, parent=self,
-            )
-            if certificate_dialog.exec() != QDialog.DialogCode.Accepted:
-                return
-            certificate = certificate_dialog.selected_certificate()
+            signing_certificates = [item for item in token.certificates if item.content_commitment]
+            remember_choice = None
+            if len(signing_certificates) == 1:
+                certificate = signing_certificates[0]
+            else:
+                certificate_dialog = CertificateSelectionDialog(
+                    token, current_id=remembered_id, allow_remember=True, parent=self,
+                )
+                if certificate_dialog.exec() != QDialog.DialogCode.Accepted:
+                    return
+                certificate = certificate_dialog.selected_certificate()
+                remember_choice = certificate_dialog.remember_choice.isChecked()
             if certificate is None:
                 return
             if certificate.id_hex and sum(
@@ -616,6 +632,15 @@ class MFirmaQtWindow(MSFluentWindow):
                 certificate_id=certificate.id_hex,
             )
             provider = Pkcs11SigningProvider(runtime_pkcs11, config.signature)
+            provider.expected_certificate_sha256 = certificate.sha256
+            signing_identity = SigningIdentity(
+                signer_name=signer_display_name(certificate.subject, certificate.label),
+                token_label=token.label, token_serial=token.serial_hex,
+                certificate_label=certificate.label, certificate_id=certificate.id_hex,
+                certificate_serial=certificate.serial_number,
+                certificate_subject=certificate.subject, certificate_issuer=certificate.issuer,
+                certificate_sha256=certificate.sha256,
+            )
             try:
                 provider.validate()
             except Exception as exc:
@@ -626,7 +651,7 @@ class MFirmaQtWindow(MSFluentWindow):
                 )
                 return
             identity_text = "\n".join(filter(None, (
-                certificate.label, certificate.subject,
+                signer_display_name(certificate.subject, certificate.label),
                 f"Tessera: {token.label} · {token.serial or token.serial_hex}",
             )))
             pin_dialog = PinDialog(len(documents), self, certificate=identity_text)
@@ -636,15 +661,16 @@ class MFirmaQtWindow(MSFluentWindow):
             try:
                 if self._shutdown_requested:
                     return
-                self._remember_certificate(
-                    preference_key,
-                    certificate.id_hex if certificate_dialog.remember_choice.isChecked() else "",
-                )
+                if remember_choice is not None:
+                    self._remember_certificate(
+                        preference_key, certificate.id_hex if remember_choice else "",
+                    )
                 if self._shutdown_requested:
                     return
                 self.start_batch(
                     provider, position_plan, pin=pin, documents=documents,
                     batch_config=config,
+                    signing_identity=signing_identity,
                     certificate_label=" · ".join(filter(None, (certificate.label, certificate.subject))),
                 )
             finally:
@@ -684,6 +710,7 @@ class MFirmaQtWindow(MSFluentWindow):
         documents: tuple[DocumentCandidate, ...] | None = None,
         batch_config: AppConfig | None = None,
         certificate_label: str = "",
+        signing_identity: SigningIdentity | None = None,
     ) -> bool:
         """Avvia un batch Qt; usato anche dai test senza hardware."""
 
@@ -695,6 +722,9 @@ class MFirmaQtWindow(MSFluentWindow):
             provider, config.output.suffix,
             output_directory=Path(config.output.directory) if config.output.directory else None,
             source_action=config.output.source_action,
+            register=self.signature_register,
+            signing_identity=signing_identity,
+            mode=config.mode,
         )
         self.progress_page.start(len(documents))
         self.switchTo(self.progress_page)
@@ -721,7 +751,8 @@ class MFirmaQtWindow(MSFluentWindow):
         self.switchTo(self.result_page)
         try:
             record = BatchHistoryRecord.from_jobs(
-                jobs, certificate_label=self._active_certificate_label
+                jobs, certificate_label=self._active_certificate_label,
+                batch_id=jobs[0].batch_id or None,
             )
         except ValueError as exc:
             LOGGER.error("Esito batch non archiviabile: %s", exc)
@@ -750,7 +781,7 @@ class MFirmaQtWindow(MSFluentWindow):
     @Slot()
     def _return_to_documents(self) -> None:
         self.switchTo(self.queue_page)
-        if self.config.monitor.root:
+        if self.config.mode == "folder" and self.config.monitor.root:
             self.refresh_documents()
 
     @Slot(object)

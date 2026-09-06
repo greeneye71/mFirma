@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,8 @@ def _certificate_details(value: object) -> dict[str, object]:
         key_usage = {}
 
     return {
+        "serial_number": str(certificate.serial_number),
+        "sha256": hashlib.sha256(bytes(value)).hexdigest(),
         "subject": certificate.subject.rfc4514_string(),
         "issuer": certificate.issuer.rfc4514_string(),
         "not_before": certificate.not_valid_before_utc.date().isoformat(),

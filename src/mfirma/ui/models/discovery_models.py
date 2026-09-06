@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
 from ...discovery import CertificateCandidate, ModuleCandidate, TokenCandidate
+from ...identity import signer_display_name
 
 
 class ModuleTableModel(QAbstractTableModel):
@@ -93,12 +94,14 @@ class CertificateTableModel(QAbstractTableModel):
         certificate = self._certificates[index.row()]
         if role == self.CERTIFICATE_ROLE:
             return certificate
+        if role == Qt.ItemDataRole.ToolTipRole:
+            return f"{certificate.subject}\nEmittente: {certificate.issuer}\nID: {certificate.id_hex}"
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         values = (
             certificate.label,
             self._purpose(certificate),
-            certificate.subject,
+            signer_display_name(certificate.subject, certificate.label),
             certificate.issuer,
             certificate.not_after,
         )

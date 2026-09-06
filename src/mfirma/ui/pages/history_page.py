@@ -31,6 +31,13 @@ class HistoryPage(QWidget):
         self.status_label = BodyLabel("Caricamento della cronologia…", self)
         self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
+        self.register_hint = BodyLabel("", self)
+        self.register_hint.setWordWrap(True)
+        self.register_hint.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        layout.addWidget(self.register_hint)
+        self.open_register_button = PushButton("Apri cartella del registro", self)
+        self.open_register_button.setVisible(False)
+        layout.addWidget(self.open_register_button)
 
         self.table = QTableView(self)
         self.table.setObjectName("historyBatchTable")
@@ -74,6 +81,16 @@ class HistoryPage(QWidget):
 
         self.copy_id_button.clicked.connect(self.copy_batch_id)
         self.set_records(())
+
+    def set_register_path(self, path) -> None:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        self.register_hint.setText(f"Registro completo per documento: {path}")
+        self.open_register_button.setVisible(True)
+        self.open_register_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+        )
 
     def set_loading(self) -> None:
         self.status_label.setText("Caricamento della cronologia…")

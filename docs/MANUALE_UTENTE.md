@@ -111,6 +111,19 @@ riporta la finestra dentro un monitor disponibile.
 
 ## Configurazione iniziale
 
+L'icona `Impostazioni` si trova in fondo alla barra laterale, separata dalle
+funzioni operative. Non richiede password.
+
+Scegliere la modalità di lavoro:
+
+- `Manuale`: aggiunta esplicita dei PDF, senza scansioni della cartella.
+- `Da cartella`: scansione della directory configurata e filtro per sottocartella;
+  resta disponibile anche l'aggiunta manuale. È il valore iniziale per le installazioni esistenti.
+
+La modalità automatica sarà definita in seguito e non è selezionabile.
+Salvare le impostazioni per applicare la modalità. Al cambio modalità o cartella
+l'elenco viene svuotato per evitare di firmare documenti del contesto precedente.
+
 In `Impostazioni` compilare:
 
 | Campo | Significato |
@@ -118,13 +131,13 @@ In `Impostazioni` compilare:
 | Cartella da firmare | Radice che contiene una sottocartella per ogni persona |
 | DLL PKCS#11 | Libreria installata dal middleware; usare `Rileva…` o `Sfoglia…` |
 | Posizione | Angolo della pagina in cui mostrare il riquadro firma |
-| Aspetto | `Completo` (240 × 92 pt) oppure `Compatto` (190 × 68 pt) |
+| Aspetto | `Completo` (212,6 × 92 pt) oppure `Compatto` (190 × 68 pt) |
 
 Premere `Salva impostazioni` per rendere effettiva la configurazione. Il PIN non
 fa parte della configurazione.
 
 L'aspetto completo mostra i dati pubblici essenziali del firmatario, la data e
-l'ora del computer con il fuso, il profilo PAdES B-B, SHA-256 e il numero della
+l'ora del computer con il fuso numerico (GMT+1 o GMT+2, secondo la data), il profilo PAdES B-B, SHA-256 e il numero della
 firma nel documento. La frase `Verificare la firma con un lettore PDF` è
 intenzionalmente neutra: il riquadro non dichiara la validità legale, la fiducia
 del certificato o la presenza di una marca temporale TSA.
@@ -152,16 +165,19 @@ del firmatario vengono letti dalla tessera durante il flusso di firma.
 1. Dopo `Continua e firma`, mFirma rilegge i dispositivi e i certificati pubblici.
 2. Se sono presenti più tessere, scegliere quella da usare nell'elenco con
    etichetta, seriale, produttore, modello e slot.
-3. Scegliere il certificato tra quelli della tessera: l'elenco mostra etichetta,
-   uso rilevato, intestatario, emittente e scadenza. L'uso `contentCommitment`
-   viene indicato come `Firma documenti`.
-4. Facoltativamente selezionare `Ricorda la scelta per questa tessera`.
+3. Se sulla tessera c'è un solo certificato `Firma documenti`, viene usato
+   direttamente, anche in presenza di certificati di autenticazione.
+   Altrimenti scegliere il certificato nell'elenco: l'intestatario mostra il
+   nome CN; i dati completi sono disponibili passando il mouse sulla riga.
+   Senza CN viene mostrato l'intestatario completo o l'etichetta.
+4. Se compare l'elenco, è possibile selezionare `Ricorda la scelta per questa tessera`.
 5. Premere `Usa certificato`, controllare intestatario e tessera nel dialogo PIN,
    quindi confermare la firma.
 
 La preferenza memorizza solo l'ID pubblico del certificato, associato al
 middleware e al seriale della tessera. Alla firma successiva sulla stessa
-tessera viene preselezionato il certificato, ma occorre ancora confermarlo.
+tessera viene preselezionato il certificato quando è necessaria una scelta.
+La regola dell'unico certificato Firma documenti ha precedenza sulla preferenza.
 Se il certificato non è più presente viene proposta una nuova scelta. Togliere
 la spunta per dimenticare la preferenza della tessera corrente. Il PIN non
 viene mai memorizzato. Certificati senza ID pubblico non possono essere ricordati.
@@ -290,3 +306,37 @@ Il nuovo nome avrà un altro suffisso, per esempio
 Durante il batch premere `Annulla dopo il file corrente`. L'operazione già
 consegnata al middleware non viene interrotta bruscamente. I file successivi
 risultano annullati e quelli completati restano validi.
+
+
+## Schermata documenti e posizionamento
+
+La schermata principale mostra il percorso della cartella in uso, senza i
+precedenti riquadri di stato. Gli avvisi compaiono vicino all'elenco soltanto
+quando necessario. La selezione evidenzia tutta la riga; le caselle indicano
+i PDF inclusi nella firma. `Seleziona tutti` seleziona o deseleziona i risultati
+attualmente visibili, rispettando ricerca e sottocartella. Il pulsante
+`Prepara la firma` mostra il totale dei documenti spuntati, anche se alcuni
+sono nascosti da un filtro.
+
+Il riquadro completo misura circa 75 × 32 mm, con l'altezza precedente invariata.
+I quattro preset lo collocano a circa 3 mm dai bordi. Il trascinamento permette
+di raggiungere il bordo effettivo del foglio, senza uscire dalla pagina.
+Le coordinate restano coerenti cambiando zoom e vengono usate nel PDF firmato.
+L'aggiornamento modifica i precedenti valori standard; dimensioni e margini
+personalizzati sono conservati.
+
+## Registro persistente delle firme
+
+Oltre alla cronologia degli ultimi 100 lotti, ogni documento viene registrato
+nel file `signatures.jsonl` accanto alla configurazione. La pagina Cronologia
+mostra il percorso e permette di aprirne la cartella.
+
+Il registro include un campo dedicato al nome del firmatario, tessera,
+certificato, file originale e firmato, date UTC, esito, impronta SHA-256 del PDF
+firmato e identificativi univoci di operazione, lotto e postazione.
+La registrazione avviene durante la firma, dopo ciascun documento.
+Un problema di scrittura viene segnalato e impedisce di proseguire con altre
+firme; i PDF già salvati vengono conservati.
+
+Per struttura, conservazione e futuro database esterno, consultare
+[Registro delle firme](REGISTRO_FIRME.md).

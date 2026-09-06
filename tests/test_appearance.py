@@ -81,7 +81,7 @@ def test_renderer_is_vector_text_with_embedded_font_and_exact_size(
         assert float(page.mediabox.height) == size[1]
         assert "Giovànni Bergamaschi" in text
         assert "05/09/2026" in text
-        assert "+02:00" in text
+        assert "GMT+2" in text
         assert "ArubaPEC Qualified CA" in text
         assert "PAdES B-B" in text
         assert "SHA-256" in text
@@ -137,7 +137,17 @@ def test_data_requires_timezone_and_formats_explicit_offset():
     with pytest.raises(ValueError, match="fuso orario"):
         _data(signing_time=datetime.datetime(2026, 9, 5, 10, 48, 32))
 
-    assert format_signing_time(_data().signing_time).endswith("+02:00")
+    assert format_signing_time(_data().signing_time).endswith("GMT+2")
+
+
+@pytest.mark.parametrize(("hours", "name", "expected"), [
+    (1, "ora solare", "GMT+1"), (2, "ora legale", "GMT+2"),
+    (5.5, "Asia", "GMT+5:30"), (-3.5, "Atlantic", "GMT-3:30"), (0, "UTC", "GMT+0"),
+])
+def test_timestamp_uses_numeric_timezone(hours, name, expected):
+    value = datetime.datetime(2026, 9, 6, 12, 15, tzinfo=datetime.timezone(datetime.timedelta(hours=hours), name))
+    assert format_signing_time(value).endswith(expected)
+    assert name not in format_signing_time(value)
 
 
 def test_appearance_data_reads_certificate_names():

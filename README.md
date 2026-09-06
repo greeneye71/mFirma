@@ -62,7 +62,7 @@ e, se necessario, annulla il batch dopo il file corrente.
 
 Nella finestra:
 
-1. scegli la cartella monitorata;
+1. scegli nelle impostazioni la modalità Manuale oppure Da cartella;
 2. indica la DLL PKCS#11 e salva le impostazioni;
 3. aggiorna l'elenco o aggiungi PDF manualmente;
 4. seleziona più righe e premi `Prepara la firma`;
@@ -104,7 +104,7 @@ Implementato:
 - quattro preset visibili e ultima pagina;
 - batch seriale con annullamento tra un file e il successivo;
 - sessione PKCS#11 condivisa dal batch;
-- output temporaneo, pubblicazione atomica e nessuna sovrascrittura;
+- output temporaneo, destinazione configurabile e scelta fra conservazione, sostituzione o eliminazione dell'originale;
 - controllo post-firma: una nuova firma incorporata, integra e
   crittograficamente valida;
 - configurazione JSON senza PIN;
@@ -113,11 +113,11 @@ Implementato:
 - lettura della tessera e scelta del certificato a ogni firma, con elenco di
   etichetta, uso, intestatario, emittente e scadenza dei certificati pubblici.
 - preferenza facoltativa per tessera e middleware: preseleziona il certificato
-  presente sulla tessera, richiedendone comunque la conferma; nessun firmatario globale.
+  presente sulla tessera, con conferma quando occorre scegliere; l'unico certificato Firma documenti viene usato direttamente.
 - scelta esplicita del token quando più dispositivi sono collegati, con
   associazione stabile tramite seriale pubblico anche per etichette uguali.
 - associazione tra certificato e chiave privata mediante ID PKCS#11 pubblico.
-- aspetto firma vettoriale completo (240 × 92 pt) o compatto (190 × 68 pt),
+- aspetto firma vettoriale completo (212,6 × 92 pt) o compatto (190 × 68 pt),
   condiviso con l'anteprima Qt e con cleanup deterministico.
 - prima dashboard PySide6/Fluent con navigazione, modello `QTableView`, ricerca
   differita, filtro per persona, selezione stabile e scansione in worker Qt.
@@ -146,7 +146,11 @@ Implementato:
   conteggi, esito e dettaglio per documento; il salvataggio è atomico e non
   contiene PIN o messaggi tecnici grezzi.
 
-Rimandato: menu moderno di Esplora file, destinazione separata, pacchetto
+Registro per documento in `signatures.jsonl`, senza il limite dei 100 lotti:
+nome del firmatario, tessera, certificato, date UTC, UUID della postazione e
+impronta SHA-256 del PDF. Dettagli in [Registro delle firme](docs/REGISTRO_FIRME.md).
+
+Rimandato: modalità automatica PDF+JSON, database centrale, menu moderno di Esplora file, pacchetto
 autonomo con installer Windows e provider CSP/CNG. Questi punti sono pianificati in
 [docs/PIANO.md](docs/PIANO.md).
 
