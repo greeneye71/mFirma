@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
+from functools import partial
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl, Signal, Slot
@@ -18,7 +19,8 @@ from qfluentwidgets import FluentIcon, MSFluentWindow, NavigationItemPosition
 
 from ..batch import BatchOrchestrator
 from ..config import AppConfig, ConfigRepository, Pkcs11Config
-from ..discovery import ModuleCandidate
+from ..discovery import ModuleCandidate, discover_pkcs11_modules, file_sha256
+from ..errors import ModuleChangedError
 from ..history import BatchHistoryRecord, HistoryRepository
 from ..identity import signer_display_name
 from ..signature_register import IncompleteRegisterError, JsonlSignatureRegister, SigningIdentity
@@ -100,7 +102,11 @@ class MFirmaQtWindow(MSFluentWindow):
         self.discovery_controller = discovery_controller or DiscoveryController(
             self
         )
-        self.signing_discovery_controller = signing_discovery_controller or DiscoveryController(self)
+        # At signing time the DLL is guarded by its pinned SHA-256, so the
+        # slower Authenticode check is only run when the DLL is chosen.
+        self.signing_discovery_controller = signing_discovery_controller or DiscoveryController(
+            self, discoverer=partial(discover_pkcs11_modules, verify_signatures=False),
+        )
         self._pending_signing: tuple[
             SignaturePositionPlan, tuple[DocumentCandidate, ...], AppConfig
         ] | None = None
@@ -333,7 +339,31 @@ class MFirmaQtWindow(MSFluentWindow):
         self,
         candidate: ModuleCandidate,
     ) -> None:
+        if candidate.needs_confirmation and not self._confirm_untrusted_module(candidate):
+            return
         self.settings_page.apply_module_candidate(candidate)
+
+    def _confirm_untrusted_module(self, candidate: ModuleCandidate) -> bool:
+        reasons = [f"Firma Authenticode: {candidate.signature.summary}."]
+        if not candidate.signature.trusted:
+            reasons.append(
+                "Windows non conferma che la DLL provenga da un editore attendibile."
+            )
+        if not candidate.protected_location:
+            reasons.append(
+                "La DLL si trova in una cartella modificabile senza privilegi di "
+                "amministratore: un altro programma potrebbe sostituirla."
+            )
+        answer = QMessageBox.question(
+            self,
+            "DLL PKCS#11 non verificata",
+            f"{candidate.path}\n\n" + "\n".join(reasons)
+            + "\n\nLa DLL riceve il PIN della tessera. Usarla solo se proviene "
+            "dal produttore del dispositivo. Continuare?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return answer == QMessageBox.StandardButton.Yes
 
     @Slot(object, str)
     def _discovery_failed(
@@ -522,11 +552,50 @@ class MFirmaQtWindow(MSFluentWindow):
                 "Seleziona e salva la DLL PKCS#11 nelle Impostazioni prima di firmare.",
             )
             return
+        if not self._check_module_pin():
+            return
         self._pending_signing = (position_plan, tuple(documents), deepcopy(self.config))
         self.preview_page.setEnabled(False)
         self.preview_page.certificate_label.setText("Lettura della tessera in corso…")
         if not self.signing_discovery_controller.inspect(Path(self.config.pkcs11.module_path)):
             self._finish_signing_request()
+
+    def _check_module_pin(self) -> bool:
+        """Pin the DLL fingerprint on first use and refuse a changed DLL."""
+        module_path = self.config.pkcs11.module_path
+        try:
+            digest = file_sha256(Path(module_path))
+        except OSError:
+            QMessageBox.warning(
+                self, "Dispositivo di firma",
+                "La DLL PKCS#11 configurata non è leggibile. Selezionala di nuovo nelle Impostazioni.",
+            )
+            return False
+        pinned = self.config.pkcs11.module_sha256.lower()
+        if pinned:
+            if digest == pinned:
+                return True
+            LOGGER.warning("Impronta della DLL PKCS#11 cambiata: %s", module_path)
+            QMessageBox.warning(
+                self, "Dispositivo di firma",
+                "La DLL PKCS#11 è cambiata dopo la verifica. Per sicurezza la firma è "
+                "bloccata: selezionala di nuovo nelle Impostazioni.",
+            )
+            return False
+        config = deepcopy(self.config)
+        config.pkcs11.module_sha256 = digest
+        try:
+            self.repository.save(config)
+        except Exception:
+            LOGGER.warning("Impronta della DLL PKCS#11 non salvata")
+            QMessageBox.warning(
+                self, "Dispositivo di firma",
+                "Non è stato possibile salvare l'impronta della DLL PKCS#11. Firma non avviata.",
+            )
+            return False
+        self.config = config
+        self.settings_page.set_module_pin(module_path, digest)
+        return True
 
     def _prepare_signature_register(self) -> bool:
         try:
@@ -661,6 +730,7 @@ class MFirmaQtWindow(MSFluentWindow):
                 token_serial=token.serial_hex,
                 certificate_label=certificate.label,
                 certificate_id=certificate.id_hex,
+                module_sha256=config.pkcs11.module_sha256,
             )
             provider = Pkcs11SigningProvider(runtime_pkcs11, config.signature)
             provider.expected_certificate_sha256 = certificate.sha256
@@ -674,6 +744,14 @@ class MFirmaQtWindow(MSFluentWindow):
             )
             try:
                 provider.validate()
+            except ModuleChangedError as exc:
+                LOGGER.warning("Dispositivo di firma non pronto: %s", exc)
+                QMessageBox.warning(
+                    self, "Dispositivo di firma",
+                    "La DLL PKCS#11 è cambiata dopo la verifica. Per sicurezza la firma è "
+                    "bloccata: selezionala di nuovo nelle Impostazioni.",
+                )
+                return
             except Exception as exc:
                 LOGGER.warning("Dispositivo di firma non pronto: %s", exc)
                 QMessageBox.warning(
@@ -718,6 +796,7 @@ class MFirmaQtWindow(MSFluentWindow):
         # Rimuove l'identità globale eventualmente lasciata dalle vecchie versioni.
         config.pkcs11 = Pkcs11Config(
             module_path=config.pkcs11.module_path,
+            module_sha256=config.pkcs11.module_sha256,
             remembered_certificates=config.pkcs11.remembered_certificates,
         )
         try:

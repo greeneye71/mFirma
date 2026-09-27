@@ -289,3 +289,12 @@ def test_tray_exit_waits_for_current_signature_then_cancels_rest(qtbot, workdir)
         JobStatus.CANCELLED,
     ]
     assert window.wait_for_workers()
+
+
+def test_result_page_states_the_limits_of_the_output_check(qtbot):
+    page = ResultPage()
+    qtbot.addWidget(page)
+    note = page.integrity_note.text()
+    assert "integrità dell'output" in note
+    for limit in ("catena di certificazione", "revoca", "validità qualificata"):
+        assert limit in note

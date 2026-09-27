@@ -27,7 +27,11 @@ class ModuleSelectionDialog(QDialog):
         layout.setSpacing(12)
         layout.addWidget(SubtitleLabel("Scegli il middleware di firma", self))
         explanation = BodyLabel(
-            "La verifica è eseguita senza PIN e fuori dal processo dell’interfaccia.",
+            "La verifica è eseguita senza PIN e fuori dal processo dell’interfaccia. "
+            "Sono cercate solo le cartelle dei programmi e i registri di sistema: "
+            "una DLL in una cartella utente va scelta con Sfoglia. Preferire DLL "
+            "firmate dal produttore; per quelle non firmate o fuori dalle cartelle "
+            "protette è richiesta una conferma.",
             self,
         )
         explanation.setWordWrap(True)
@@ -39,9 +43,10 @@ class ModuleSelectionDialog(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.setColumnWidth(0, 400)
-        self.table.setColumnWidth(1, 150)
-        self.table.setColumnWidth(2, 240)
+        self.table.setColumnWidth(0, 340)
+        self.table.setColumnWidth(1, 200)
+        self.table.setColumnWidth(2, 150)
+        self.table.setColumnWidth(3, 200)
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table, 1)
 

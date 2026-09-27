@@ -1,10 +1,13 @@
+import hashlib
 from contextlib import contextmanager
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from PySide6.QtWidgets import QDialog, QMessageBox
 
+from mfirma.authenticode import SIGNATURE_VALID, ModuleSignature
 from mfirma.config import AppConfig, ConfigRepository
 from mfirma.discovery import CertificateCandidate, DiscoveryResult, ModuleCandidate, TokenCandidate
 from mfirma.models import DocumentCandidate, JobStatus, SignaturePositionPlan
@@ -299,3 +302,58 @@ def test_multiple_document_signing_certificates_still_require_choice(signing_flo
     state.request()
     assert len(state.certificate_choices) == 1
     assert state.batches[-1][0].config.certificate_id == "02"
+
+
+def test_first_signature_pins_the_module_and_a_changed_dll_is_refused(signing_flow):
+    state = signing_flow
+    module = Path(state.window.config.pkcs11.module_path)
+    state.request()
+    assert len(state.batches) == 1
+    pinned = hashlib.sha256(b"test middleware").hexdigest()
+    assert state.window.repository.load().pkcs11.module_sha256 == pinned
+    assert state.batches[0][0].config.module_sha256 == pinned
+    assert state.window.settings_page.build_config().pkcs11.module_sha256 == pinned
+
+    module.write_bytes(b"middleware sostituito")
+    state.window.request_signing(SignaturePositionPlan(placements={}))
+
+    assert len(state.batches) == 1
+    assert state.reads == 1
+    assert "cambiata" in state.warnings[-1]
+    assert state.window.repository.load().pkcs11.module_sha256 == pinned
+
+
+@pytest.mark.parametrize("answer", [QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes])
+def test_unverified_module_requires_explicit_confirmation(signing_flow, monkeypatch, workdir, answer):
+    state = signing_flow
+    questions = []
+
+    def question(*args, **_kwargs):
+        questions.append(args[2])
+        return answer
+
+    monkeypatch.setattr(QMessageBox, "question", question)
+    other = workdir / "altra-pkcs11.dll"
+    candidate = replace(state.candidate, path=other, sha256="f" * 64)
+    previous = state.window.settings_page.module_path.text()
+
+    state.window._apply_module_candidate(candidate)
+
+    assert len(questions) == 1
+    assert "Firma non verificata" in questions[0]
+    assert "PIN" in questions[0]
+    expected = str(other) if answer == QMessageBox.StandardButton.Yes else previous
+    assert state.window.settings_page.module_path.text() == expected
+
+
+def test_signed_module_in_protected_folder_needs_no_confirmation(signing_flow, monkeypatch, workdir):
+    state = signing_flow
+    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: pytest.fail("domanda inattesa"))
+    candidate = replace(
+        state.candidate,
+        path=workdir / "firmata-pkcs11.dll",
+        signature=ModuleSignature(SIGNATURE_VALID, "Produttore"),
+        protected_location=True,
+    )
+    state.window._apply_module_candidate(candidate)
+    assert state.window.settings_page.module_path.text() == str(candidate.path)

@@ -20,8 +20,13 @@ _ERROR_MESSAGES = {
     "FILE_CHANGED": "Il documento è cambiato dopo la selezione.",
     "OUTPUT_EXISTS": "Esiste già un file con il nome di destinazione.",
     "PDF_INVALID": "Il PDF non può essere firmato.",
-    "SIGNED_OUTPUT_INVALID": "Il controllo della nuova firma non è riuscito.",
+    "SIGNED_OUTPUT_INVALID": "Controllo di integrità dell'output non superato.",
+    "SIGNER_CERTIFICATE_MISMATCH": (
+        "Controllo di integrità dell'output non superato: "
+        "il certificato nel PDF non è quello selezionato."
+    ),
     "MODULE_LOAD_FAILED": "Il dispositivo di firma non è disponibile.",
+    "MODULE_CHANGED": "La DLL PKCS#11 è cambiata: selezionarla di nuovo nelle Impostazioni.",
     "SIGNATURE_FAILED": "La firma non è riuscita.",
     "OUTPUT_WRITE_FAILED": "Non è stato possibile scrivere il file di output.",
 }

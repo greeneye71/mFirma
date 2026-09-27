@@ -7,7 +7,7 @@ from ...identity import signer_display_name
 
 
 class ModuleTableModel(QAbstractTableModel):
-    HEADERS = ("DLL x64", "Token rilevati", "Certificati pubblici", "Origine")
+    HEADERS = ("DLL x64", "Firma DLL", "Token rilevati", "Certificati pubblici", "Origine")
     CANDIDATE_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 
     def __init__(self, candidates: tuple[ModuleCandidate, ...], parent=None):
@@ -36,23 +36,44 @@ class ModuleTableModel(QAbstractTableModel):
         if role == self.CANDIDATE_ROLE:
             return candidate
         if role == Qt.ItemDataRole.ToolTipRole:
+            if index.column() == 1:
+                return self._signature_tooltip(candidate)
             return str(candidate.path)
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if index.column() == 0:
             return str(candidate.path)
         if index.column() == 1:
+            text = candidate.signature.summary
+            if not candidate.protected_location:
+                text += " · cartella utente"
+            return text
+        if index.column() == 2:
             if candidate.tokens:
                 return ", ".join(
                     token.label or f"slot {token.slot_id}"
                     for token in candidate.tokens
                 )
             return ", ".join(candidate.token_labels) or "Nessuno collegato"
-        if index.column() == 2:
-            return ", ".join(candidate.certificate_labels) or "—"
         if index.column() == 3:
+            return ", ".join(candidate.certificate_labels) or "—"
+        if index.column() == 4:
             return candidate.source
         return None
+
+    @staticmethod
+    def _signature_tooltip(candidate: ModuleCandidate) -> str:
+        lines = [f"Authenticode: {candidate.signature.summary}"]
+        if candidate.signature.detail:
+            lines.append(f"Stato Windows: {candidate.signature.detail}")
+        lines.append(
+            "Cartella protetta (Programmi o Windows)"
+            if candidate.protected_location
+            else "Cartella modificabile senza privilegi di amministratore"
+        )
+        if candidate.sha256:
+            lines.append(f"SHA-256: {candidate.sha256}")
+        return "\n".join(lines)
 
     def candidate(self, row: int) -> ModuleCandidate | None:
         return self._candidates[row] if 0 <= row < len(self._candidates) else None

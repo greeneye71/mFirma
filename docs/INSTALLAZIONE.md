@@ -103,11 +103,13 @@ rinominarle: installare il middleware ufficiale e usare la libreria fornita.
 
 Nella GUI premere `Rileva…` accanto al percorso della DLL. La ricerca:
 
-1. legge le posizioni dei software installati registrate da Windows;
-2. controlla `Program Files`, `LocalAppData` e `System32` con nomi compatibili;
+1. legge le posizioni dei software installati per tutti gli utenti (HKLM);
+2. controlla `Program Files` e `System32` con nomi compatibili; `LocalAppData`
+   e le installazioni per singolo utente (HKCU) sono esclusi;
 3. scarta file non DLL e architetture diverse da x64;
 4. interroga ogni candidata in un processo separato con timeout;
-5. mostra soltanto i moduli che rispondono come PKCS#11.
+5. mostra soltanto i moduli che rispondono come PKCS#11, con lo stato della
+   firma Authenticode e l'editore della DLL.
 
 La ricerca non chiede il PIN. Un modulo può essere riconosciuto anche senza un
 token collegato; in tal caso non saranno disponibili etichette da compilare.

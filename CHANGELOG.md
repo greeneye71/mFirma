@@ -2,6 +2,17 @@
 
 ## Non rilasciato
 
+- verificata la firma Authenticode della DLL PKCS#11 con indicazione
+  dell'editore; conferma esplicita per DLL non firmate o fuori da cartelle
+  protette (Programmi, Windows);
+- esclusi `LocalAppData` e le chiavi HKCU dalla ricerca automatica del
+  middleware; la scelta manuale con `Sfoglia…` resta possibile;
+- impronta SHA-256 della DLL registrata alla prima firma: se il file cambia la
+  firma viene bloccata (`MODULE_CHANGED`);
+- rinominato il controllo post-firma in `verify_output_integrity`, con codice
+  dedicato `SIGNER_CERTIFICATE_MISMATCH` e messaggio "controllo di integrità
+  dell'output non superato"; la pagina di esito dichiara che il controllo non
+  verifica catena, revoca o validità qualificata;
 - impostata l'icona della TNA anche a livello di applicazione, con identità
   Windows dedicata per distinguerla da Python nella barra delle applicazioni;
 

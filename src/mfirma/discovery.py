@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import struct
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Iterable, Iterator
+
+from .authenticode import ModuleSignature, verify_authenticode
 
 
 _DLL_NAME_MARKERS = (
@@ -92,6 +95,14 @@ class ModuleCandidate:
     certificate_ids: tuple[tuple[str, str], ...] = ()
     certificates: tuple[CertificateCandidate, ...] = ()
     tokens: tuple[TokenCandidate, ...] = ()
+    sha256: str = ""
+    signature: ModuleSignature = ModuleSignature()
+    protected_location: bool = False
+
+    @property
+    def needs_confirmation(self) -> bool:
+        """True when the DLL is unsigned or outside an admin-only folder."""
+        return not (self.signature.trusted and self.protected_location)
 
     def find_token(self, label: str, serial_hex: str = "") -> TokenCandidate | None:
         if serial_hex:
@@ -183,7 +194,8 @@ def _registry_search_roots() -> list[tuple[Path, str, int]]:
         flag = getattr(winreg, flag_name, 0)
         access_modes.add(winreg.KEY_READ | flag)
 
-    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+    # HKCU entries can be written by any process of the user: not searched.
+    for hive in (winreg.HKEY_LOCAL_MACHINE,):
         for access in access_modes:
             try:
                 parent = winreg.OpenKey(hive, uninstall_key, 0, access)
@@ -216,16 +228,62 @@ def _registry_search_roots() -> list[tuple[Path, str, int]]:
     return roots
 
 
-def _default_search_roots() -> list[tuple[Path, str, int]]:
-    roots = _registry_search_roots()
-    for variable in ("ProgramW6432", "ProgramFiles", "LOCALAPPDATA"):
+def _environment_paths(*variables: str) -> list[Path]:
+    paths: list[Path] = []
+    for variable in variables:
         value = os.environ.get(variable)
         if value:
-            roots.append((Path(value), variable, 4 if variable != "LOCALAPPDATA" else 3))
+            try:
+                paths.append(Path(value).resolve())
+            except OSError:
+                continue
+    return paths
+
+
+def _is_within(path: Path, roots: Iterable[Path]) -> bool:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+    return any(resolved == root or resolved.is_relative_to(root) for root in roots)
+
+
+def is_protected_location(path: Path) -> bool:
+    """True for folders that normally only administrators can modify."""
+    return _is_within(
+        path,
+        _environment_paths("ProgramW6432", "ProgramFiles", "ProgramFiles(x86)", "SystemRoot"),
+    )
+
+
+def _is_user_writable_root(path: Path) -> bool:
+    return _is_within(
+        path, _environment_paths("USERPROFILE", "LOCALAPPDATA", "APPDATA", "TEMP", "TMP")
+    )
+
+
+def _default_search_roots() -> list[tuple[Path, str, int]]:
+    # User-writable folders are never searched automatically: a DLL placed
+    # there by any user process must be chosen explicitly with Sfoglia.
+    roots = [
+        root for root in _registry_search_roots() if not _is_user_writable_root(root[0])
+    ]
+    for variable in ("ProgramW6432", "ProgramFiles"):
+        value = os.environ.get(variable)
+        if value:
+            roots.append((Path(value), variable, 4))
     system_root = os.environ.get("SystemRoot")
     if system_root:
         roots.append((Path(system_root) / "System32", "Windows System32", 0))
     return roots
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def find_candidate_paths(
@@ -307,6 +365,7 @@ def discover_pkcs11_modules(
     search_roots: Iterable[Path] | None = None,
     extra_paths: Iterable[Path] = (),
     probe_timeout: float = 6.0,
+    verify_signatures: bool = True,
 ) -> DiscoveryResult:
     """Find x64 PKCS#11 modules and validate them outside the GUI process."""
     paths = find_candidate_paths(search_roots=search_roots, extra_paths=extra_paths)
@@ -329,6 +388,10 @@ def discover_pkcs11_modules(
         item: tuple[Path, str, str]
     ) -> ModuleCandidate | None:
         path, source, architecture = item
+        try:
+            sha256 = file_sha256(path)
+        except OSError:
+            return None
         tokens = _probe_in_subprocess(path, probe_timeout)
         if tokens is None:
             return None
@@ -442,6 +505,8 @@ def discover_pkcs11_modules(
             path=path,
             architecture=architecture,
             source=source,
+            sha256=sha256,
+            protected_location=is_protected_location(path),
             token_labels=tuple(sorted(token_labels, key=str.casefold)),
             certificate_labels=tuple(sorted(certificate_labels, key=str.casefold)),
             document_signing_labels=tuple(
@@ -475,4 +540,10 @@ def discover_pkcs11_modules(
         validated = []
     candidates = [candidate for candidate in validated if candidate is not None]
     rejected += len(validated) - len(candidates)
+    if verify_signatures and candidates:
+        signatures = verify_authenticode(candidate.path for candidate in candidates)
+        candidates = [
+            replace(candidate, signature=signatures.get(candidate.path, ModuleSignature()))
+            for candidate in candidates
+        ]
     return DiscoveryResult(tuple(candidates), len(paths), rejected)

@@ -271,6 +271,7 @@ class SettingsPage(QWidget):
         self.recursive.setChecked(config.monitor.recursive_within_person)
         self.stability_seconds.setValue(config.monitor.stability_seconds)
         self.module_path.setText(config.pkcs11.module_path)
+        self._module_pin = (config.pkcs11.module_path, config.pkcs11.module_sha256)
         self._set_combo_data(self.preset, config.signature.preset)
         self.appearance_variant.blockSignals(True)
         self._set_combo_data(
@@ -295,6 +296,7 @@ class SettingsPage(QWidget):
         config.pkcs11 = Pkcs11Config(
             module_path=self.module_path.text().strip(),
             remembered_certificates=deepcopy(self._loaded_config.pkcs11.remembered_certificates),
+            module_sha256=self._pinned_module_sha256(self.module_path.text().strip()),
         )
         config.signature.preset = str(self.preset.currentData())
         config.signature.appearance_variant = str(
@@ -326,7 +328,22 @@ class SettingsPage(QWidget):
 
     def apply_module_candidate(self, candidate: ModuleCandidate) -> None:
         self.module_path.setText(str(candidate.path))
-        self.discovery_status.setText(f"Middleware verificato: {candidate.path.name}")
+        self._module_pin = (str(candidate.path), candidate.sha256)
+        status = f"Middleware verificato: {candidate.path.name} · {candidate.signature.summary}"
+        if not candidate.protected_location:
+            status += " · ATTENZIONE: cartella modificabile senza privilegi di amministratore"
+        self.discovery_status.setText(status)
+
+    def set_module_pin(self, module_path: str, sha256: str) -> None:
+        self._module_pin = (module_path, sha256)
+        if self._loaded_config.pkcs11.module_path == module_path:
+            self._loaded_config.pkcs11.module_sha256 = sha256
+
+    def _pinned_module_sha256(self, module_path: str) -> str:
+        # A path typed by hand has no verified fingerprint: the first signature
+        # will read the DLL again and pin it.
+        pinned_path, sha256 = self._module_pin
+        return sha256 if module_path and module_path == pinned_path else ""
 
     def update_remembered_certificates(self, preferences: dict[str, str]) -> None:
         self._loaded_config.pkcs11.remembered_certificates = dict(preferences)
