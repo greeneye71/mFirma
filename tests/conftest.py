@@ -20,3 +20,15 @@ def workdir() -> Path:
         yield path
     finally:
         shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _no_authenticode(monkeypatch):
+    """Keep discovery hermetic: Authenticode would start PowerShell."""
+    from mfirma import discovery
+    from mfirma.authenticode import ModuleSignature
+
+    monkeypatch.setattr(
+        discovery, "verify_authenticode",
+        lambda paths, **_kwargs: {path: ModuleSignature() for path in paths},
+    )

@@ -74,8 +74,18 @@ sono esterni a `.venv`, quindi la ricostruzione dell'ambiente non li modifica.
 
 La GUI avvia `discovery.py` in un worker. Il modulo raccoglie percorsi candidati
 dal registro dei software installati e da un insieme limitato di cartelle
-standard, filtrando i nomi tipici di moduli PKCS#11. Prima del caricamento legge
-l'intestazione PE e accetta soltanto DLL x64.
+standard, filtrando i nomi tipici di moduli PKCS#11. Sono considerati solo
+percorsi HKLM e cartelle protette: `LocalAppData`, profilo utente e HKCU sono
+esclusi. Prima del caricamento legge l'intestazione PE e accetta soltanto DLL
+x64. Per ogni candidata calcola l'impronta SHA-256, indica se la cartella è
+protetta e ottiene lo stato Authenticode da `authenticode.py`, che invoca
+`Get-AuthenticodeSignature` passando i percorsi tramite variabile d'ambiente;
+qualsiasi errore produce uno stato sconosciuto, mai attendibile.
+
+La GUI chiede conferma per le DLL non firmate o fuori da cartelle protette e,
+alla prima firma, salva l'impronta in `pkcs11.module_sha256`. `provider.py`
+ricalcola l'impronta in `validate()` e solleva `ModuleChangedError`
+(`MODULE_CHANGED`) se non coincide.
 
 Ogni candidata viene passata a `mfirma.probe` in un processo separato, senza
 PIN e con timeout. Questo confina blocchi o crash del middleware fuori dal
@@ -140,8 +150,10 @@ Il servizio PDF:
 10. elimina sempre il PDF temporaneo dell'aspetto e lascia all'output service
     la pubblicazione del risultato.
 
-La verifica usa il certificato del firmatario come ancora locale per isolare il
-controllo crittografico. Non esegue una valutazione normativa, EUTL, OCSP o CRL.
+La verifica (`verify_output_integrity`) usa il certificato del firmatario come
+ancora locale per isolare il controllo crittografico e confronta il certificato
+incorporato con quello scelto (`SIGNER_CERTIFICATE_MISMATCH` in caso di
+differenza). Non esegue una valutazione normativa, EUTL, OCSP o CRL.
 
 Lo spike con pyHanko 0.37.0 ha confermato dimensioni esatte, testo estraibile,
 font incorporato, resa vettoriale al 400%, firma e verifica. Non sono state

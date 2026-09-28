@@ -14,7 +14,12 @@ from .appearance import (
     appearance_data_from_certificate,
 )
 from .config import SignatureConfig
-from .errors import PdfInvalidError, SignatureFailedError, SignedOutputInvalidError
+from .errors import (
+    PdfInvalidError,
+    SignatureFailedError,
+    SignedOutputInvalidError,
+    SignerCertificateMismatchError,
+)
 from .models import NormalizedDisplayRect, PageGeometry, SignaturePlacement
 from .placement import (
     calculate_placement,
@@ -62,8 +67,16 @@ def embedded_signature_count(path: Path) -> int:
         raise PdfInvalidError(f"Impossibile leggere le firme PDF: {exc}") from exc
 
 
-def verify_new_signature(path: Path, previous_count: int, *, expected_certificate_sha256: str) -> None:
-    """Verifica incremento, integrità e firma crittografica, non la fiducia legale."""
+INTEGRITY_FAILED = "Controllo di integrità dell'output non superato"
+
+
+def verify_output_integrity(path: Path, previous_count: int, *, expected_certificate_sha256: str) -> None:
+    """Controlla che l'output contenga una nuova firma integra del certificato scelto.
+
+    Il certificato del firmatario è usato come unica radice di fiducia, quindi
+    il controllo prova soltanto integrità e coerenza con il certificato
+    selezionato: non verifica catena, revoca né qualificazione della firma.
+    """
     try:
         from pyhanko.pdf_utils.reader import PdfFileReader
         from pyhanko.sign.validation import validate_pdf_signature
@@ -74,12 +87,14 @@ def verify_new_signature(path: Path, previous_count: int, *, expected_certificat
             signatures = reader.embedded_signatures
             if len(signatures) != previous_count + 1:
                 raise SignedOutputInvalidError(
-                    "L'output non contiene esattamente una nuova firma"
+                    f"{INTEGRITY_FAILED}: l'output non contiene esattamente una nuova firma"
                 )
             newest = signatures[-1]
             actual = hashlib.sha256(newest.signer_cert.dump()).hexdigest()
             if not expected_certificate_sha256 or actual != expected_certificate_sha256.lower():
-                raise SignedOutputInvalidError("Il certificato nel PDF non corrisponde a quello selezionato")
+                raise SignerCertificateMismatchError(
+                    f"{INTEGRITY_FAILED}: il certificato nel PDF non corrisponde a quello selezionato"
+                )
             context = ValidationContext(
                 trust_roots=[newest.signer_cert], allow_fetching=False
             )
@@ -88,12 +103,12 @@ def verify_new_signature(path: Path, previous_count: int, *, expected_certificat
             )
             if not status.intact or not status.valid:
                 raise SignedOutputInvalidError(
-                    "La nuova firma non supera il controllo crittografico"
+                    f"{INTEGRITY_FAILED}: la nuova firma non è integra"
                 )
     except SignedOutputInvalidError:
         raise
     except Exception as exc:
-        raise SignedOutputInvalidError(f"Verifica firma non riuscita: {exc}") from exc
+        raise SignedOutputInvalidError(f"{INTEGRITY_FAILED}: {exc}") from exc
 
 
 def sign_pades(
@@ -215,5 +230,5 @@ def sign_pades(
 
     if phase_callback:
         phase_callback("verifying")
-    verify_new_signature(temporary_output, old_signature_count,
+    verify_output_integrity(temporary_output, old_signature_count,
                          expected_certificate_sha256=expected_certificate_sha256)

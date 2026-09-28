@@ -15,8 +15,8 @@ from pypdf import PdfReader, PdfWriter
 from mfirma.appearance import ReportLabSignatureAppearanceRenderer
 from mfirma.config import SignatureConfig
 from mfirma.models import SignaturePlacement
-from mfirma.pdf_service import embedded_signature_count, sign_pades, verify_new_signature
-from mfirma.errors import SignedOutputInvalidError
+from mfirma.pdf_service import embedded_signature_count, sign_pades, verify_output_integrity
+from mfirma.errors import SignedOutputInvalidError, SignerCertificateMismatchError
 
 
 def _resources_have_embedded_font(resources) -> bool:
@@ -102,11 +102,12 @@ def test_final_pdf_must_contain_selected_certificate(workdir):
     signer = make_signer(workdir)
     fingerprint = hashlib.sha256(signer.signing_cert.dump()).hexdigest()
     sign_pades(source, output, signer, SignatureConfig(), expected_certificate_sha256=fingerprint)
-    verify_new_signature(output, 0, expected_certificate_sha256=fingerprint)
+    verify_output_integrity(output, 0, expected_certificate_sha256=fingerprint)
     for wrong in ("0" * 64, ""):
-        with pytest.raises(SignedOutputInvalidError, match="certificato"):
-            verify_new_signature(output, 0, expected_certificate_sha256=wrong)
-    with pytest.raises(SignedOutputInvalidError, match="certificato"):
+        with pytest.raises(SignerCertificateMismatchError, match="integrità.*certificato") as raised:
+            verify_output_integrity(output, 0, expected_certificate_sha256=wrong)
+        assert raised.value.code == "SIGNER_CERTIFICATE_MISMATCH"
+    with pytest.raises(SignerCertificateMismatchError, match="certificato"):
         sign_pades(source, output, signer, SignatureConfig(), expected_certificate_sha256="0" * 64)
 
 

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import pytest
-from PySide6.QtCore import QThreadPool
+from PySide6.QtCore import QThreadPool, Qt
 
+from mfirma.authenticode import SIGNATURE_UNSIGNED, SIGNATURE_VALID, ModuleSignature
 from mfirma.config import AppConfig, ConfigRepository
 from mfirma.discovery import (
     CertificateCandidate,
@@ -19,6 +20,7 @@ from mfirma.ui.dialogs import (
     TokenSelectionDialog,
 )
 from mfirma.ui.main_window import MFirmaQtWindow
+from mfirma.ui.models.discovery_models import ModuleTableModel
 from mfirma.ui.pages.settings_page import SettingsPage
 from mfirma.ui.workers import (
     DiscoveryController,
@@ -237,3 +239,41 @@ def test_main_window_saves_settings_without_pin(qtbot, workdir):
     assert saved.output.suffix == "_firmato_qt"
     assert "pin" not in repository.path.read_text(encoding="utf-8").casefold()
     assert window.settings_page.save_status.text() == "Impostazioni salvate"
+
+
+def test_settings_keep_the_module_pin_only_for_the_same_path(qtbot, workdir):
+    config = AppConfig()
+    config.pkcs11.module_path = str(workdir / "vendor-pkcs11.dll")
+    config.pkcs11.module_sha256 = "b" * 64
+    page = SettingsPage(config)
+    qtbot.addWidget(page)
+    assert page.build_config().pkcs11.module_sha256 == "b" * 64
+
+    page.module_path.setText(str(workdir / "altra.dll"))
+    assert page.build_config().pkcs11.module_sha256 == ""
+
+    candidate = replace(_module(workdir), sha256="c" * 64)
+    page.apply_module_candidate(candidate)
+    assert page.build_config().pkcs11.module_sha256 == "c" * 64
+    assert "Non firmata" not in page.discovery_status.text()
+    assert "ATTENZIONE" in page.discovery_status.text()
+
+    page.set_module_pin(str(candidate.path), "d" * 64)
+    assert page.build_config().pkcs11.module_sha256 == "d" * 64
+
+
+def test_module_table_shows_authenticode_state(qtbot, workdir):
+    signed = replace(
+        _module(workdir),
+        sha256="e" * 64,
+        signature=ModuleSignature(SIGNATURE_VALID, "Produttore Prova", "Valid"),
+        protected_location=True,
+    )
+    unsigned = replace(_module(workdir), signature=ModuleSignature(SIGNATURE_UNSIGNED))
+    model = ModuleTableModel((signed, unsigned))
+    assert model.headerData(1, Qt.Orientation.Horizontal) == "Firma DLL"
+    assert model.data(model.index(0, 1)) == "Firmata: Produttore Prova"
+    assert model.data(model.index(1, 1)) == "Non firmata · cartella utente"
+    tooltip = model.data(model.index(0, 1), Qt.ItemDataRole.ToolTipRole)
+    assert "SHA-256: " + "e" * 64 in tooltip
+    assert "Cartella protetta" in tooltip

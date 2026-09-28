@@ -28,7 +28,12 @@
 - il rilevamento usa posizioni e nomi plausibili e non può garantire di trovare
   tutti i middleware PKCS#11 esistenti;
 - la richiesta PIN protetta del middleware deve essere provata sul dispositivo;
-- la validazione automatica non determina validità qualificata o legale.
+- il controllo di integrità dell'output non verifica catena di certificazione,
+  revoca o validità qualificata e non determina la validità legale;
+- l'impronta della DLL è registrata alla prima firma (trust-on-first-use) nella
+  configurazione utente, modificabile senza privilegi di amministratore;
+- la verifica Authenticode richiede PowerShell; se non disponibile lo stato
+  risulta sconosciuto e l'uso della DLL richiede conferma.
 - la selezione multipla dal verbo classico di Esplora file non è ancora stata
   collaudata con 1, 50 e 100 PDF su una postazione Windows 11 reale;
 - i PDF con riferimenti incrociati ibridi sono rifiutati in modalità rigorosa;

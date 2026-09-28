@@ -43,6 +43,15 @@ class ResultPage(QWidget):
         layout.addWidget(self.title)
         layout.addWidget(self.subtitle)
         layout.addWidget(self.log_hint)
+        self.integrity_note = BodyLabel(
+            "Il controllo automatico verifica solo l'integrità dell'output e la "
+            "corrispondenza con il certificato selezionato. Non verifica catena di "
+            "certificazione, revoca né validità qualificata della firma.",
+            self,
+        )
+        self.integrity_note.setObjectName("integrityNote")
+        self.integrity_note.setWordWrap(True)
+        layout.addWidget(self.integrity_note)
 
         counts = QFrame(self)
         counts.setFrameShape(QFrame.Shape.StyledPanel)

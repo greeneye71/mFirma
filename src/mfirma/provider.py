@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator, Protocol
 
 from .config import Pkcs11Config, SignatureConfig
-from .errors import ProviderConfigurationError
+from .errors import ModuleChangedError, ProviderConfigurationError
 from .models import NormalizedDisplayRect, SignaturePlacement
 from .pdf_service import sign_pades
 
@@ -98,6 +98,16 @@ class Pkcs11SigningProvider:
         module = Path(self.config.module_path).expanduser()
         if not module.is_file():
             raise ProviderConfigurationError(f"DLL PKCS#11 non trovata: {module}")
+        pinned = self.config.module_sha256.lower()
+        if pinned:
+            try:
+                digest = hashlib.sha256(module.read_bytes()).hexdigest()
+            except OSError as exc:
+                raise ProviderConfigurationError(f"DLL PKCS#11 non leggibile: {module}") from exc
+            if digest != pinned:
+                raise ModuleChangedError(
+                    "La DLL PKCS#11 è cambiata dopo la verifica: selezionarla di nuovo nelle Impostazioni"
+                )
         if not self.config.certificate_label and not self.config.certificate_id:
             raise ProviderConfigurationError("Selezionare il certificato di firma")
         if (len(self.expected_certificate_sha256) != 64

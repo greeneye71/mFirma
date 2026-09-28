@@ -149,11 +149,24 @@ dei programmi installati e nelle posizioni standard di Windows, accetta
 soltanto DLL x64 e verifica l'interfaccia PKCS#11 in un processo separato. Il
 controllo non richiede il PIN e può durare alcuni secondi.
 
-La finestra mostra percorso, eventuali token collegati e origine della
-candidata. Selezionare una riga e premere `Usa selezionata`, oppure fare doppio
+La finestra mostra percorso, firma della DLL, eventuali token collegati e
+origine della candidata. La colonna `Firma DLL` indica l'editore se la DLL ha
+una firma Authenticode valida, altrimenti `Non firmata` o `Firma NON valida`;
+`cartella utente` segnala una posizione modificabile senza privilegi di
+amministratore. Il suggerimento sulla colonna mostra anche l'impronta SHA-256.
+Selezionare una riga e premere `Usa selezionata`, oppure fare doppio
 clic, quindi salvare le impostazioni. Un middleware valido può comparire anche
 senza tessere inserite. Se la ricerca non trova nulla, usare `Sfoglia` e indicare
 la DLL documentata dal produttore.
+
+La ricerca automatica non considera `LocalAppData`. Una DLL scelta con
+`Sfoglia` che non è firmata o si trova in una cartella utente richiede una
+conferma prima della firma: procedere solo se la provenienza è certa.
+
+Alla prima firma mFirma registra l'impronta della DLL. Se in seguito il file
+cambia (per esempio dopo un aggiornamento del middleware), la firma viene
+bloccata con un avviso: riselezionare la DLL con `Rileva…` o `Sfoglia` e
+salvare le impostazioni per registrare la nuova impronta.
 
 ### Scegliere il certificato al momento della firma
 
@@ -286,9 +299,11 @@ Se fallisce solo l'eliminazione, il risultato segnala l'errore e mostra il
 percorso della copia firmata già salvata.
 
 Un output viene pubblicato con il nome definitivo solo dopo che il programma ha
-verificato la presenza di una nuova firma e la sua integrità crittografica.
-Questo controllo non certifica da solo la validità legale o la catena di fiducia
-del certificato.
+verificato la presenza di una nuova firma, la sua integrità crittografica e il
+certificato usato. Se il controllo fallisce, l'esito riporta "controllo di
+integrità dell'output non superato". La pagina di esito ricorda che questo
+controllo non verifica la catena di certificazione, la revoca o la validità
+qualificata del certificato.
 
 ## Aggiungere una seconda firma allo stesso PDF
 

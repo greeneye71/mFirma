@@ -42,6 +42,8 @@ class Pkcs11Config:
     certificate_id: str = ""
     key_label: str = ""
     remembered_certificates: dict[str, str] = field(default_factory=dict)
+    # SHA-256 of the DLL accepted by the user; signing stops if it changes.
+    module_sha256: str = ""
 
 
 @dataclass(slots=True)
@@ -87,6 +89,12 @@ class AppConfig:
                 raise ValueError("Seriale PKCS#11 del token non valido") from exc
             if not serial:
                 raise ValueError("Seriale PKCS#11 del token vuoto")
+        module_sha256 = self.pkcs11.module_sha256
+        if module_sha256 and (
+            len(module_sha256) != 64
+            or any(char not in "0123456789abcdef" for char in module_sha256.lower())
+        ):
+            raise ValueError("Impronta SHA-256 della DLL PKCS#11 non valida")
         suffix = self.output.suffix
         if self.output.source_action not in {"keep", "overwrite", "delete"}:
             raise ValueError("Azione sul file originale non valida")

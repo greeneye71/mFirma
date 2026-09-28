@@ -24,3 +24,11 @@ class ProviderConfigurationError(MFirmaError):
 
 class SignedOutputInvalidError(MFirmaError):
     code = "SIGNED_OUTPUT_INVALID"
+
+
+class ModuleChangedError(ProviderConfigurationError):
+    code = "MODULE_CHANGED"
+
+
+class SignerCertificateMismatchError(SignedOutputInvalidError):
+    code = "SIGNER_CERTIFICATE_MISMATCH"

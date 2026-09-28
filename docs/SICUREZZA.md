@@ -23,6 +23,19 @@
   messaggi classificati e non le eccezioni tecniche.
 - Il worker discovery Qt conserva l'isolamento esistente: non carica la DLL nel
   processo grafico e non effettua autenticazione sul token.
+- La ricerca automatica considera solo cartelle protette (Programmi, Windows) e
+  percorsi registrati in HKLM; `LocalAppData` e HKCU sono esclusi perché
+  modificabili senza privilegi di amministratore.
+- Per ogni DLL viene letta la firma Authenticode tramite
+  `Get-AuthenticodeSignature` e mostrato l'editore. Una DLL non firmata, con
+  firma non valida o fuori da una cartella protetta richiede una conferma
+  esplicita prima di essere usata.
+- Alla prima firma viene registrata l'impronta SHA-256 della DLL. Prima di ogni
+  batch l'impronta viene ricalcolata: se è cambiata la firma viene bloccata
+  finché l'utente non riseleziona e conferma il modulo. L'impronta è
+  trust-on-first-use e risiede nella configurazione utente, quindi protegge
+  dalla sostituzione della DLL ma non da chi può modificare anche la
+  configurazione.
 - Il worker di anteprima legge soltanto il PDF sorgente e produce in memoria i
   byte dell'aspetto dopo aver eliminato deterministicamente il temporaneo; la
   pagina Qt non scrive né modifica il documento mostrato.
@@ -50,8 +63,10 @@
 
 ## Validazione
 
-Il controllo automatico conferma che la nuova firma è presente, integra e
-crittograficamente valida. Non sostituisce:
+Il controllo di integrità dell'output (`verify_output_integrity`) conferma che
+la nuova firma è presente, integra, crittograficamente valida e prodotta con il
+certificato scelto; una discrepanza del certificato produce l'errore
+`SIGNER_CERTIFICATE_MISMATCH`. Non sostituisce:
 
 - verifica della catena di certificazione;
 - controllo di revoche OCSP/CRL;
@@ -112,7 +127,7 @@ e riproducibili.
 | PDF cambiato dopo selezione | confronto dimensione e data di modifica |
 | Firma solo grafica | verifica dell'oggetto firma incorporato |
 | Errore su un file blocca tutti | esito indipendente per ogni job |
-| DLL non autorizzata | percorso esplicito; provenienza da verificare operativamente |
+| DLL non autorizzata | ricerca solo in cartelle protette e HKLM; Authenticode con editore; conferma per DLL non firmate o in cartelle utente; impronta SHA-256 bloccante |
 | Richiesta IPC arbitraria | socket per utente, schema versionato, soli PDF assoluti e limiti 100 file/256 KiB |
 
 ## IPC e integrazione con Esplora file
